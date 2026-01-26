@@ -7,10 +7,19 @@
 
 import OpenAI from 'openai'
 
-// Initialize OpenAI client
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-})
+// Lazy-initialize OpenAI client to avoid build-time errors
+let _openai: OpenAI | null = null
+
+function getOpenAI(): OpenAI {
+  if (!_openai) {
+    const apiKey = process.env.OPENAI_API_KEY
+    if (!apiKey) {
+      throw new Error('OPENAI_API_KEY environment variable is not set')
+    }
+    _openai = new OpenAI({ apiKey })
+  }
+  return _openai
+}
 
 export type ContentTone =
   | 'professional'
@@ -120,7 +129,7 @@ Structure the post with:
 
 Write in markdown format.`
 
-  const response = await openai.chat.completions.create({
+  const response = await getOpenAI().chat.completions.create({
     model: 'gpt-4-turbo-preview',
     messages: [
       { role: 'system', content: systemPrompt },
@@ -180,7 +189,7 @@ Format your response as JSON:
   "suggestedMedia": "..."
 }`
 
-  const response = await openai.chat.completions.create({
+  const response = await getOpenAI().chat.completions.create({
     model: 'gpt-4-turbo-preview',
     messages: [
       { role: 'system', content: systemPrompt },
@@ -251,7 +260,7 @@ Generate multiple variations optimized for the ${objective} objective.
 
 Format your response as JSON with the appropriate fields for ${platform}.`
 
-  const response = await openai.chat.completions.create({
+  const response = await getOpenAI().chat.completions.create({
     model: 'gpt-4-turbo-preview',
     messages: [
       { role: 'system', content: systemPrompt },
@@ -305,7 +314,7 @@ Format your response as JSON:
   }
 }`
 
-  const response = await openai.chat.completions.create({
+  const response = await getOpenAI().chat.completions.create({
     model: 'gpt-4-turbo-preview',
     messages: [
       { role: 'system', content: systemPrompt },
@@ -365,7 +374,7 @@ Format as JSON:
   }
 }`
 
-  const response = await openai.chat.completions.create({
+  const response = await getOpenAI().chat.completions.create({
     model: 'gpt-4-turbo-preview',
     messages: [
       { role: 'system', content: systemPrompt },
@@ -423,7 +432,7 @@ Format as JSON:
   ]
 }`
 
-  const response = await openai.chat.completions.create({
+  const response = await getOpenAI().chat.completions.create({
     model: 'gpt-4-turbo-preview',
     messages: [
       { role: 'system', content: systemPrompt },
@@ -437,4 +446,4 @@ Format as JSON:
   return JSON.parse(response.choices[0].message.content || '{"ideas": []}')
 }
 
-export { openai }
+export { getOpenAI }
