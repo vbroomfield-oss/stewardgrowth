@@ -1,0 +1,1175 @@
+// ===========================================
+// STEWARDGROWTH DATABASE SCHEMA
+// Multi-tenant AI Marketing & Growth Platform
+// ===========================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ===========================================
+// CORE: ORGANIZATION & USER MODELS
+// ===========================================
+
+model Organization {
+  id        String    @id @default(cuid())
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  name         String
+  slug         String  @unique
+  logo         String?
+  primaryColor String? @default("#6366f1")
+  timezone     String  @default("America/New_York")
+
+  // Subscription
+  subscriptionTier SubscriptionTier @default(FREE)
+  subscriptionEnds DateTime?
+  stripeCustomerId String?
+
+  // SSO with Steward ecosystem (optional)
+  stewardOrgId   String?
+  stewardLinkedAt DateTime?
+
+  settings Json? @default("{}")
+
+  // Relations
+  members    OrganizationMember[]
+  brands     SaaSBrand[]
+  apiKeys    ApiKey[]
+  webhooks   Webhook[]
+  auditLogs  AuditLog[]
+
+  @@index([slug])
+  @@index([stripeCustomerId])
+}
+
+enum SubscriptionTier {
+  FREE
+  STARTER
+  GROWTH
+  PRO
+  ENTERPRISE
+}
+
+model User {
+  id        String    @id @default(cuid())
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  supabaseId String  @unique
+  email      String  @unique
+  firstName  String
+  lastName   String
+  avatar     String?
+  phone      String?
+
+  isActive    Boolean   @default(true)
+  lastLoginAt DateTime?
+  preferences Json?     @default("{}")
+
+  // Steward ecosystem SSO
+  stewardUserId String?
+
+  // Relations
+  organizations      OrganizationMember[]
+  createdApprovals   ApprovalRequest[]    @relation("ApprovalRequester")
+  reviewedApprovals  ApprovalRequest[]    @relation("ApprovalReviewer")
+  auditLogs          AuditLog[]
+
+  @@index([supabaseId])
+  @@index([email])
+}
+
+model OrganizationMember {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  role        UserRole @default(VIEWER)
+  permissions String[] @default([])
+  isDefault   Boolean  @default(false)
+
+  @@unique([userId, organizationId])
+  @@index([organizationId])
+}
+
+enum UserRole {
+  OWNER
+  ADMIN
+  MANAGER
+  ANALYST
+  VIEWER
+}
+
+// ===========================================
+// MODULE 1: SAAS BRAND (MULTI-TENANT HUB)
+// ===========================================
+
+model SaaSBrand {
+  id        String    @id @default(cuid())
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  name   String
+  slug   String
+  logo   String?
+  domain String?
+
+  // Brand Voice Profile (for AI content)
+  brandVoice Json? @default("{}")
+  // { tone, personality, keywords, avoidWords, sampleContent[] }
+
+  // Target Audiences
+  targetAudiences Json? @default("[]")
+  // [{ name, demographics, painPoints, interests }]
+
+  // Marketing Goals
+  goals Json? @default("{}")
+  // { monthly: { leads, trials, revenue }, quarterly: {...} }
+
+  // Budget Constraints
+  budgetConstraints Json? @default("{}")
+  // { monthly: 5000, dailyMax: 200, platforms: { google: 2000, meta: 1500 } }
+
+  // Approval Rules
+  approvalRules Json? @default("{}")
+  // { adSpendThreshold: 500, requireApproval: ["content", "campaigns"] }
+
+  isActive Boolean @default(true)
+  settings Json?   @default("{}")
+
+  // Relations
+  events               MarketingEvent[]
+  kpiSnapshots         KPISnapshot[]
+  attributionRecords   AttributionRecord[]
+  seoAudits            SEOAudit[]
+  contentPosts         ContentPost[]
+  contentCalendars     ContentCalendar[]
+  adPlatformConnections AdPlatformConnection[]
+  adCampaigns          AdCampaign[]
+  callEvents           CallEvent[]
+  aiRecommendations    AIRecommendation[]
+  marketingPlans       MarketingPlan[]
+  approvalRequests     ApprovalRequest[]
+
+  @@unique([organizationId, slug])
+  @@index([organizationId])
+}
+
+// ===========================================
+// MODULE 2: EVENT INGESTION & ANALYTICS
+// ===========================================
+
+model MarketingEvent {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  brandId String
+  brand   SaaSBrand @relation(fields: [brandId], references: [id], onDelete: Cascade)
+
+  eventName EventType
+  timestamp DateTime
+
+  // User Identification
+  userId      String?
+  anonymousId String?
+  sessionId   String?
+
+  // Attribution (UTM)
+  utmSource   String?
+  utmMedium   String?
+  utmCampaign String?
+  utmTerm     String?
+  utmContent  String?
+  referrer    String?
+  landingPage String?
+
+  // Event Properties
+  properties Json? @default("{}")
+
+  // Revenue (for financial events)
+  revenue  Decimal?
+  currency String?  @default("USD")
+
+  // Device/Location
+  deviceType String?
+  browser    String?
+  os         String?
+  country    String?
+  region     String?
+  city       String?
+
+  // Processing
+  processedAt DateTime?
+  batchId     String?
+
+  @@index([brandId])
+  @@index([eventName])
+  @@index([timestamp])
+  @@index([userId])
+  @@index([anonymousId])
+  @@index([utmSource])
+  @@index([utmCampaign])
+}
+
+enum EventType {
+  // Traffic
+  PAGE_VIEW
+  SESSION_START
+  SESSION_END
+
+  // Lead Generation
+  LEAD_CAPTURED
+  FORM_SUBMITTED
+  DEMO_REQUESTED
+
+  // Signup Funnel
+  SIGNUP_STARTED
+  SIGNUP_COMPLETED
+  EMAIL_VERIFIED
+
+  // Trial
+  TRIAL_STARTED
+  TRIAL_EXTENDED
+  TRIAL_ENDED
+
+  // Subscription
+  SUBSCRIPTION_STARTED
+  SUBSCRIPTION_UPGRADED
+  SUBSCRIPTION_DOWNGRADED
+  SUBSCRIPTION_CANCELLED
+
+  // Payment
+  PAYMENT_SUCCEEDED
+  PAYMENT_FAILED
+  REFUND_ISSUED
+
+  // Churn
+  CHURNED
+  REACTIVATED
+
+  // Engagement
+  FEATURE_USED
+  SUPPORT_TICKET
+
+  // Calls (from StewardRing)
+  CALL_STARTED
+  CALL_COMPLETED
+  CALL_MISSED
+  VOICEMAIL_LEFT
+}
+
+// ===========================================
+// MODULE 3: KPI & ATTRIBUTION ENGINE
+// ===========================================
+
+model KPISnapshot {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  brandId String
+  brand   SaaSBrand @relation(fields: [brandId], references: [id], onDelete: Cascade)
+
+  periodType  PeriodType
+  periodStart DateTime
+  periodEnd   DateTime
+
+  // Traffic
+  pageViews          Int      @default(0)
+  uniqueVisitors     Int      @default(0)
+  sessions           Int      @default(0)
+  avgSessionDuration Decimal? @default(0)
+  bounceRate         Decimal? @default(0)
+
+  // Leads
+  leads            Int @default(0)
+  leadsFromAds     Int @default(0)
+  leadsFromSEO     Int @default(0)
+  leadsFromDirect  Int @default(0)
+  leadsFromReferral Int @default(0)
+
+  // Funnel
+  trials              Int      @default(0)
+  trialToSubscription Decimal? @default(0)
+  paidUsers           Int      @default(0)
+  newPaidUsers        Int      @default(0)
+
+  // Revenue
+  mrr          Decimal @default(0)
+  arr          Decimal @default(0)
+  newMrr       Decimal @default(0)
+  expansionMrr Decimal @default(0)
+  churnedMrr   Decimal @default(0)
+  netMrrGrowth Decimal @default(0)
+
+  // Churn
+  churnedUsers Int      @default(0)
+  churnRate    Decimal? @default(0)
+
+  // Cost
+  totalAdSpend Decimal  @default(0)
+  cac          Decimal?
+  cpc          Decimal?
+  cpl          Decimal?
+
+  // Calls
+  callsReceived  Int @default(0)
+  callsFromAds   Int @default(0)
+  callsConverted Int @default(0)
+
+  // Attribution Breakdown
+  revenueBySource Json? @default("{}")
+  platformMetrics Json? @default("{}")
+
+  @@unique([brandId, periodType, periodStart])
+  @@index([brandId])
+  @@index([periodType])
+  @@index([periodStart])
+}
+
+enum PeriodType {
+  DAILY
+  WEEKLY
+  MONTHLY
+  QUARTERLY
+  YEARLY
+}
+
+model AttributionRecord {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  brandId String
+  brand   SaaSBrand @relation(fields: [brandId], references: [id], onDelete: Cascade)
+
+  conversionEventId String
+  touchpointEventId String
+
+  model  AttributionModel
+  credit Decimal
+
+  source   String
+  medium   String?
+  campaign String?
+
+  revenue Decimal?
+
+  @@index([brandId])
+  @@index([source])
+  @@index([createdAt])
+}
+
+enum AttributionModel {
+  FIRST_TOUCH
+  LAST_TOUCH
+  LINEAR
+  TIME_DECAY
+  POSITION_BASED
+}
+
+// ===========================================
+// MODULE 4: SEO AUTOMATION ENGINE
+// ===========================================
+
+model SEOAudit {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  brandId String
+  brand   SaaSBrand @relation(fields: [brandId], references: [id], onDelete: Cascade)
+
+  domain String
+
+  // Crawl Status
+  lastCrawlAt  DateTime?
+  crawlStatus  CrawlStatus @default(PENDING)
+  pagesFound   Int         @default(0)
+  pagesCrawled Int         @default(0)
+
+  // Scores (0-100)
+  overallScore       Int?
+  performanceScore   Int?
+  accessibilityScore Int?
+  seoScore           Int?
+
+  // Issues
+  technicalIssues Json? @default("[]")
+
+  // Meta Analysis
+  pagesWithoutTitle Int @default(0)
+  pagesWithoutMeta  Int @default(0)
+  duplicateTitles   Int @default(0)
+  missingAltTags    Int @default(0)
+  brokenLinks       Int @default(0)
+
+  // Schema
+  schemaMarkupPresent Boolean  @default(false)
+  schemaTypes         String[] @default([])
+
+  // Internal Linking
+  avgInternalLinks Decimal? @default(0)
+  orphanPages      Int      @default(0)
+
+  // Relations
+  keywords KeywordOpportunity[]
+  tasks    SEOTask[]
+  rankings KeywordRanking[]
+
+  @@unique([brandId, domain])
+  @@index([brandId])
+}
+
+enum CrawlStatus {
+  PENDING
+  CRAWLING
+  COMPLETED
+  FAILED
+}
+
+model KeywordOpportunity {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  seoAuditId String
+  seoAudit   SEOAudit @relation(fields: [seoAuditId], references: [id], onDelete: Cascade)
+
+  keyword String
+
+  // Metrics
+  searchVolume     Int?
+  difficulty       Int?
+  cpc              Decimal?
+  currentRank      Int?
+  opportunityScore Int?
+
+  // Intent
+  intent KeywordIntent?
+
+  // AI Suggestions
+  suggestedTitle    String?
+  suggestedMetaDesc String?
+  suggestedH1       String?
+  suggestedContent  String? @db.Text
+
+  status KeywordStatus @default(IDENTIFIED)
+
+  @@index([seoAuditId])
+  @@index([opportunityScore])
+}
+
+enum KeywordIntent {
+  INFORMATIONAL
+  NAVIGATIONAL
+  COMMERCIAL
+  TRANSACTIONAL
+}
+
+enum KeywordStatus {
+  IDENTIFIED
+  TARGETING
+  RANKING
+  OPTIMIZED
+  DISMISSED
+}
+
+model KeywordRanking {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  seoAuditId String
+  seoAudit   SEOAudit @relation(fields: [seoAuditId], references: [id], onDelete: Cascade)
+
+  keyword      String
+  position     Int
+  url          String?
+  searchEngine String @default("google")
+  country      String @default("US")
+  device       String @default("desktop")
+
+  @@index([seoAuditId])
+  @@index([keyword])
+  @@index([createdAt])
+}
+
+model SEOTask {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  seoAuditId String
+  seoAudit   SEOAudit @relation(fields: [seoAuditId], references: [id], onDelete: Cascade)
+
+  taskType SEOTaskType
+  priority TaskPriority @default(MEDIUM)
+
+  title       String
+  description String? @db.Text
+
+  targetUrl     String?
+  targetKeyword String?
+
+  recommendation  String? @db.Text
+  estimatedImpact String?
+
+  status      TaskStatus @default(PENDING)
+  completedAt DateTime?
+  completedById String?
+
+  approvalId String?
+
+  @@index([seoAuditId])
+  @@index([status])
+  @@index([priority])
+}
+
+enum SEOTaskType {
+  FIX_TECHNICAL_ISSUE
+  OPTIMIZE_META
+  ADD_SCHEMA
+  BUILD_INTERNAL_LINKS
+  CREATE_CONTENT
+  OPTIMIZE_EXISTING_CONTENT
+  FIX_BROKEN_LINK
+  IMPROVE_PERFORMANCE
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum TaskStatus {
+  PENDING
+  IN_PROGRESS
+  AWAITING_APPROVAL
+  COMPLETED
+  DISMISSED
+}
+
+// ===========================================
+// MODULE 5: CONTENT & SOCIAL ENGINE
+// ===========================================
+
+model ContentPost {
+  id        String    @id @default(cuid())
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  brandId String
+  brand   SaaSBrand @relation(fields: [brandId], references: [id], onDelete: Cascade)
+
+  createdById String?
+
+  title   String?
+  content String  @db.Text
+
+  // Platform-specific versions
+  platformVersions Json? @default("{}")
+
+  // Media
+  media Json? @default("[]")
+
+  // Scheduling
+  platforms    String[] @default([])
+  scheduledFor DateTime?
+  timezone     String   @default("America/New_York")
+
+  // AI Generation
+  aiGenerated Boolean @default(false)
+  aiPrompt    String? @db.Text
+  aiModel     String?
+
+  // Brand Voice
+  brandVoiceScore Int?
+
+  // Status
+  status      ContentStatus @default(DRAFT)
+  publishedAt DateTime?
+
+  // Engagement
+  engagementMetrics Json? @default("{}")
+
+  approvalId String?
+
+  @@index([brandId])
+  @@index([status])
+  @@index([scheduledFor])
+}
+
+enum ContentStatus {
+  DRAFT
+  AWAITING_APPROVAL
+  APPROVED
+  SCHEDULED
+  PUBLISHING
+  PUBLISHED
+  FAILED
+  ARCHIVED
+}
+
+model ContentCalendar {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  brandId String
+  brand   SaaSBrand @relation(fields: [brandId], references: [id], onDelete: Cascade)
+
+  weekStart DateTime
+  weekEnd   DateTime
+
+  plan Json? @default("{}")
+
+  targetImpressions Int?
+  targetEngagements Int?
+
+  actualImpressions Int @default(0)
+  actualEngagements Int @default(0)
+
+  status CalendarStatus @default(DRAFT)
+
+  @@unique([brandId, weekStart])
+  @@index([brandId])
+}
+
+enum CalendarStatus {
+  DRAFT
+  APPROVED
+  IN_PROGRESS
+  COMPLETED
+}
+
+// ===========================================
+// MODULE 6: PAID ADS INTELLIGENCE
+// ===========================================
+
+model AdPlatformConnection {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  brandId String
+  brand   SaaSBrand @relation(fields: [brandId], references: [id], onDelete: Cascade)
+
+  platform AdPlatform
+
+  // Credentials (encrypted)
+  credentials Json?
+
+  accountId   String?
+  accountName String?
+
+  status     ConnectionStatus @default(PENDING)
+  lastSyncAt DateTime?
+  lastError  String?
+
+  // Limits
+  monthlyBudget Decimal?
+  dailySpendCap Decimal?
+  cpaThreshold  Decimal?
+  roasThreshold Decimal?
+
+  @@unique([brandId, platform])
+  @@index([brandId])
+}
+
+enum AdPlatform {
+  GOOGLE_ADS
+  META_ADS
+  LINKEDIN_ADS
+  TIKTOK_ADS
+}
+
+enum ConnectionStatus {
+  PENDING
+  CONNECTED
+  ERROR
+  EXPIRED
+  DISCONNECTED
+}
+
+model AdCampaign {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  brandId String
+  brand   SaaSBrand @relation(fields: [brandId], references: [id], onDelete: Cascade)
+
+  platform   AdPlatform
+  externalId String?
+
+  name      String
+  objective CampaignObjective
+
+  dailyBudget Decimal?
+  totalBudget Decimal?
+
+  targeting Json? @default("{}")
+
+  status         CampaignStatus @default(DRAFT)
+  platformStatus String?
+
+  // Performance
+  impressions Int     @default(0)
+  clicks      Int     @default(0)
+  conversions Int     @default(0)
+  spend       Decimal @default(0)
+  ctr         Decimal?
+  cpc         Decimal?
+  cpa         Decimal?
+  roas        Decimal?
+
+  lastSyncAt DateTime?
+
+  // Relations
+  creatives AdCreative[]
+  abTests   ABTest[]
+
+  @@index([brandId])
+  @@index([platform])
+  @@index([status])
+}
+
+enum CampaignObjective {
+  AWARENESS
+  TRAFFIC
+  ENGAGEMENT
+  LEADS
+  CONVERSIONS
+  SALES
+}
+
+enum CampaignStatus {
+  DRAFT
+  AWAITING_APPROVAL
+  APPROVED
+  ACTIVE
+  PAUSED
+  ENDED
+  ARCHIVED
+}
+
+model AdCreative {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  campaignId String
+  campaign   AdCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  externalId String?
+
+  headline     String?
+  description  String?
+  callToAction String?
+
+  mediaType MediaType?
+  mediaUrl  String?
+
+  aiGenerated Boolean @default(false)
+  aiPrompt    String? @db.Text
+
+  impressions Int @default(0)
+  clicks      Int @default(0)
+  conversions Int @default(0)
+
+  status     CreativeStatus @default(DRAFT)
+  approvalId String?
+
+  @@index([campaignId])
+}
+
+enum MediaType {
+  IMAGE
+  VIDEO
+  CAROUSEL
+  STORY
+}
+
+enum CreativeStatus {
+  DRAFT
+  AWAITING_APPROVAL
+  APPROVED
+  ACTIVE
+  PAUSED
+  REJECTED
+}
+
+model ABTest {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  campaignId String
+  campaign   AdCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  name       String
+  hypothesis String? @db.Text
+
+  variants Json @default("[]")
+
+  metric        String
+  minSampleSize Int?
+  duration      Int?
+
+  status     ABTestStatus @default(PROPOSED)
+  winner     String?
+  confidence Decimal?
+
+  startedAt DateTime?
+  endedAt   DateTime?
+
+  approvalId String?
+
+  @@index([campaignId])
+}
+
+enum ABTestStatus {
+  PROPOSED
+  AWAITING_APPROVAL
+  RUNNING
+  COMPLETED
+  CANCELLED
+}
+
+// ===========================================
+// MODULE 7: STEWARDRING INTEGRATION (CALLS)
+// ===========================================
+
+model CallEvent {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  brandId String
+  brand   SaaSBrand @relation(fields: [brandId], references: [id], onDelete: Cascade)
+
+  stewardringCallId String @unique
+
+  direction   CallDirection
+  callerId    String?
+  callerName  String?
+  callerPhone String
+
+  startedAt DateTime
+  endedAt   DateTime?
+  duration  Int?
+
+  outcome CallOutcome
+
+  // Attribution
+  utmSource   String?
+  utmMedium   String?
+  utmCampaign String?
+  landingPage String?
+
+  // AI Analysis
+  sentiment String?
+  intent    String?
+  summary   String? @db.Text
+
+  // Revenue
+  attributedRevenue Decimal?
+  conversionEventId String?
+
+  @@index([brandId])
+  @@index([startedAt])
+  @@index([outcome])
+}
+
+enum CallDirection {
+  INBOUND
+  OUTBOUND
+}
+
+enum CallOutcome {
+  COMPLETED
+  MISSED
+  VOICEMAIL
+  BUSY
+  NO_ANSWER
+  CANCELLED
+}
+
+// ===========================================
+// MODULE 8: AI DECISION ENGINE
+// ===========================================
+
+model AIRecommendation {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  brandId String
+  brand   SaaSBrand @relation(fields: [brandId], references: [id], onDelete: Cascade)
+
+  type     RecommendationType
+  category String?
+
+  title       String
+  description String @db.Text
+
+  dataContext     Json? @default("{}")
+  suggestedAction Json? @default("{}")
+
+  estimatedImpact String?
+  confidenceScore Decimal?
+
+  priority TaskPriority @default(MEDIUM)
+  urgency  Urgency      @default(NORMAL)
+
+  status RecommendationStatus @default(PENDING)
+
+  wasAccepted Boolean?
+  outcome     Json?
+
+  approvalId String?
+  expiresAt  DateTime?
+
+  @@index([brandId])
+  @@index([type])
+  @@index([status])
+  @@index([createdAt])
+}
+
+enum RecommendationType {
+  SEO_OPPORTUNITY
+  SEO_ISSUE
+  KEYWORD_TARGET
+  CONTENT_IDEA
+  REPURPOSE_CONTENT
+  TRENDING_TOPIC
+  BUDGET_REALLOCATION
+  PAUSE_CAMPAIGN
+  SCALE_CAMPAIGN
+  AB_TEST_PROPOSAL
+  CREATIVE_REFRESH
+  MARKET_INSIGHT
+  COMPETITOR_ALERT
+  ANOMALY_DETECTED
+}
+
+enum Urgency {
+  LOW
+  NORMAL
+  HIGH
+  CRITICAL
+}
+
+enum RecommendationStatus {
+  PENDING
+  VIEWED
+  ACCEPTED
+  REJECTED
+  IMPLEMENTED
+  EXPIRED
+}
+
+model MarketingPlan {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  brandId String
+  brand   SaaSBrand @relation(fields: [brandId], references: [id], onDelete: Cascade)
+
+  weekStart DateTime
+  weekEnd   DateTime
+
+  goals            Json? @default("[]")
+  actions          Json? @default("[]")
+  budgetAllocation Json? @default("{}")
+  focusAreas       String[] @default([])
+
+  aiAnalysis String? @db.Text
+
+  status     PlanStatus @default(DRAFT)
+  approvalId String?
+
+  @@unique([brandId, weekStart])
+  @@index([brandId])
+}
+
+enum PlanStatus {
+  DRAFT
+  AWAITING_APPROVAL
+  APPROVED
+  IN_PROGRESS
+  COMPLETED
+}
+
+// ===========================================
+// MODULE 9: APPROVAL & AUDIT LAYER
+// ===========================================
+
+model ApprovalRequest {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  brandId String?
+  brand   SaaSBrand? @relation(fields: [brandId], references: [id], onDelete: Cascade)
+
+  requesterId String
+  requester   User   @relation("ApprovalRequester", fields: [requesterId], references: [id])
+
+  type        ApprovalType
+  title       String
+  description String? @db.Text
+
+  resourceType String
+  resourceId   String
+
+  proposedChanges Json? @default("{}")
+  budgetImpact    Decimal?
+
+  status ApprovalStatus @default(PENDING)
+
+  reviewerId  String?
+  reviewer    User?    @relation("ApprovalReviewer", fields: [reviewerId], references: [id])
+  reviewedAt  DateTime?
+  reviewNotes String?
+
+  autoApproved       Boolean @default(false)
+  autoApprovalReason String?
+
+  expiresAt DateTime?
+
+  @@index([brandId])
+  @@index([requesterId])
+  @@index([status])
+  @@index([type])
+}
+
+enum ApprovalType {
+  AD_SPEND
+  CONTENT_PUBLISH
+  CAMPAIGN_LAUNCH
+  CAMPAIGN_PAUSE
+  BUDGET_CHANGE
+  AB_TEST_START
+  CREATIVE_APPROVAL
+  PLAN_APPROVAL
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  EXPIRED
+  CANCELLED
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+
+  brandId String?
+
+  userId String?
+  user   User?  @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  action     String
+  resource   String
+  resourceId String
+
+  changes Json? @default("{}")
+
+  ipAddress String?
+  userAgent String?
+
+  success      Boolean @default(true)
+  errorMessage String?
+
+  @@index([organizationId])
+  @@index([brandId])
+  @@index([userId])
+  @@index([action])
+  @@index([resource])
+  @@index([createdAt])
+}
+
+// ===========================================
+// API KEYS & WEBHOOKS
+// ===========================================
+
+model ApiKey {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  name        String
+  description String?
+
+  keyPrefix String
+  keyHash   String
+
+  permissions String[] @default([])
+
+  expiresAt  DateTime?
+  lastUsedAt DateTime?
+
+  isActive    Boolean @default(true)
+  createdById String
+
+  rateLimit Int @default(1000)
+
+  @@index([organizationId])
+  @@index([keyPrefix])
+}
+
+model Webhook {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  name   String
+  url    String
+  secret String?
+
+  events String[] @default([])
+
+  isActive Boolean @default(true)
+
+  lastTriggeredAt DateTime?
+  lastSuccessAt   DateTime?
+  lastFailureAt   DateTime?
+  failureCount    Int      @default(0)
+
+  createdById String
+
+  @@index([organizationId])
+}
