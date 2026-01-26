@@ -1,3 +1,5 @@
+'use client'
+
 import { Button } from '@/components/ui/button'
 import { cn, formatCurrency } from '@/lib/utils'
 import { Check, X, Clock, FileText, Megaphone, DollarSign } from 'lucide-react'
