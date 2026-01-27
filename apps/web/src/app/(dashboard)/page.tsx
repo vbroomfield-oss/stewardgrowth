@@ -241,7 +241,10 @@ export default function DashboardPage() {
                 <CardContent>
                   <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                     {data.brands.slice(0, 6).map((brand) => (
-                      <BrandCard key={brand.id} brand={brand} />
+                      <BrandCard key={brand.id} brand={{
+                        ...brand,
+                        domain: brand.domain || undefined,
+                      }} />
                     ))}
                   </div>
                 </CardContent>
