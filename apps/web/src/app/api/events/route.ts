@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get recent events
-    const recentEvents = await db.event.findMany({
+    const recentEvents = await db.marketingEvent.findMany({
       where: {
         brandId: { in: brandIds },
       },
@@ -51,49 +51,49 @@ export async function GET(request: NextRequest) {
       take: limit,
       select: {
         id: true,
-        eventType: true,
-        visitorId: true,
+        eventName: true,
+        anonymousId: true,
         userId: true,
         brandId: true,
         timestamp: true,
         properties: true,
-        url: true,
+        landingPage: true,
       },
     })
 
     // Get event counts by type
-    const eventCounts = await db.event.groupBy({
-      by: ['eventType'],
+    const eventCounts = await db.marketingEvent.groupBy({
+      by: ['eventName'],
       where: {
         brandId: { in: brandIds },
       },
       _count: {
-        eventType: true,
+        eventName: true,
       },
     })
 
     // Transform events for response
     const transformedEvents = recentEvents.map(event => ({
       id: event.id,
-      event: event.eventType,
-      user: event.userId || event.visitorId || 'anonymous',
+      event: event.eventName,
+      user: event.userId || event.anonymousId || 'anonymous',
       brand: brandMap.get(event.brandId) || 'Unknown',
       brandId: event.brandId,
       time: getRelativeTime(event.timestamp),
       timestamp: event.timestamp.toISOString(),
       properties: event.properties || {},
-      url: event.url,
+      url: event.landingPage,
     }))
 
     // Transform summary
     const summary = eventCounts.map(ec => ({
-      name: ec.eventType,
-      count: ec._count.eventType,
+      name: ec.eventName,
+      count: ec._count.eventName,
       change: 0, // Would need historical data to calculate
     }))
 
     // Get total count
-    const totalCount = await db.event.count({
+    const totalCount = await db.marketingEvent.count({
       where: {
         brandId: { in: brandIds },
       },
