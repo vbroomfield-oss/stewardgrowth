@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
@@ -19,13 +20,14 @@ import {
   Settings,
   HelpCircle,
   ChevronDown,
-  TrendingUp,
   Target,
   Calendar,
   Zap,
   Globe,
   LineChart,
   BookOpen,
+  Plus,
+  Loader2,
 } from 'lucide-react'
 import {
   DropdownMenu,
@@ -76,12 +78,39 @@ const navigation = [
   },
 ]
 
+interface Brand {
+  id: string
+  name: string
+  slug: string
+  color?: string
+}
+
 interface SidebarProps {
   className?: string
 }
 
 export function Sidebar({ className }: SidebarProps) {
   const pathname = usePathname()
+  const [brands, setBrands] = useState<Brand[]>([])
+  const [loading, setLoading] = useState(true)
+  const [selectedBrand, setSelectedBrand] = useState<string | null>(null)
+
+  useEffect(() => {
+    async function fetchBrands() {
+      try {
+        const res = await fetch('/api/brands')
+        if (res.ok) {
+          const data = await res.json()
+          setBrands(data.brands || [])
+        }
+      } catch (err) {
+        console.error('Failed to load brands for sidebar:', err)
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchBrands()
+  }, [])
 
   return (
     <div className={cn('flex flex-col h-full bg-card border-r', className)}>
@@ -101,29 +130,50 @@ export function Sidebar({ className }: SidebarProps) {
                 <div className="w-6 h-6 rounded bg-primary/10 flex items-center justify-center">
                   <Globe className="w-4 h-4 text-primary" />
                 </div>
-                <span className="truncate">All Brands</span>
+                <span className="truncate">
+                  {selectedBrand
+                    ? brands.find(b => b.id === selectedBrand)?.name || 'All Brands'
+                    : 'All Brands'
+                  }
+                </span>
               </div>
               <ChevronDown className="h-4 w-4 opacity-50" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="w-56">
-            <DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setSelectedBrand(null)}>
               <Globe className="mr-2 h-4 w-4" />
               All Brands
             </DropdownMenuItem>
-            <Separator className="my-1" />
-            <DropdownMenuItem>
-              <div className="w-4 h-4 rounded bg-blue-500 mr-2" />
-              StewardMAX
-            </DropdownMenuItem>
-            <DropdownMenuItem>
-              <div className="w-4 h-4 rounded bg-green-500 mr-2" />
-              StewardRing
-            </DropdownMenuItem>
-            <DropdownMenuItem>
-              <div className="w-4 h-4 rounded bg-purple-500 mr-2" />
-              StewardPro
-            </DropdownMenuItem>
+            {brands.length > 0 && <Separator className="my-1" />}
+            {loading ? (
+              <div className="flex items-center justify-center py-2">
+                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+              </div>
+            ) : brands.length > 0 ? (
+              brands.map((brand) => (
+                <DropdownMenuItem
+                  key={brand.id}
+                  onClick={() => setSelectedBrand(brand.id)}
+                  asChild
+                >
+                  <Link href={`/brands/${brand.slug}`}>
+                    <div
+                      className="w-4 h-4 rounded mr-2"
+                      style={{ backgroundColor: brand.color || '#6366f1' }}
+                    />
+                    {brand.name}
+                  </Link>
+                </DropdownMenuItem>
+              ))
+            ) : (
+              <DropdownMenuItem asChild>
+                <Link href="/brands/new" className="text-muted-foreground">
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add your first brand
+                </Link>
+              </DropdownMenuItem>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
