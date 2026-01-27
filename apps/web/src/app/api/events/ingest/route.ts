@@ -1,13 +1,49 @@
 export const dynamic = 'force-dynamic'
 
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
-import {
-  processEvent,
-  processBatch,
-  marketingEventSchema,
-  type MarketingEventInput,
-} from '@/lib/analytics/event-processor'
+import { db } from '@/lib/db'
+
+// Map incoming event type strings to Prisma EventType enum
+const EVENT_TYPE_MAP: Record<string, string> = {
+  // Traffic
+  'page_view': 'PAGE_VIEW',
+  'session_start': 'SESSION_START',
+  'session_end': 'SESSION_END',
+  // Lead Generation
+  'lead_captured': 'LEAD_CAPTURED',
+  'form_submitted': 'FORM_SUBMITTED',
+  'demo_requested': 'DEMO_REQUESTED',
+  // Signup Funnel
+  'signup_started': 'SIGNUP_STARTED',
+  'signup_completed': 'SIGNUP_COMPLETED',
+  'email_verified': 'EMAIL_VERIFIED',
+  // Trial
+  'trial_started': 'TRIAL_STARTED',
+  'trial_extended': 'TRIAL_EXTENDED',
+  'trial_ended': 'TRIAL_ENDED',
+  // Subscription
+  'subscription_started': 'SUBSCRIPTION_STARTED',
+  'subscription_upgraded': 'SUBSCRIPTION_UPGRADED',
+  'subscription_downgraded': 'SUBSCRIPTION_DOWNGRADED',
+  'subscription_cancelled': 'SUBSCRIPTION_CANCELLED',
+  // Payment
+  'payment_succeeded': 'PAYMENT_SUCCEEDED',
+  'payment_failed': 'PAYMENT_FAILED',
+  'refund_issued': 'REFUND_ISSUED',
+  // Churn
+  'churned': 'CHURNED',
+  'reactivated': 'REACTIVATED',
+  // Engagement
+  'feature_used': 'FEATURE_USED',
+  'support_ticket': 'SUPPORT_TICKET',
+  // Calls
+  'call_started': 'CALL_STARTED',
+  'call_completed': 'CALL_COMPLETED',
+  'call_missed': 'CALL_MISSED',
+  'voicemail_left': 'VOICEMAIL_LEFT',
+  // Also support identify as page view for tracking
+  'identify': 'PAGE_VIEW',
+}
 
 // Rate limiting - simple in-memory (use Redis in production)
 const rateLimits = new Map<string, { count: number; resetAt: number }>()
@@ -37,10 +73,10 @@ function checkRateLimit(brandId: string): boolean {
  * High-throughput event ingestion endpoint.
  * Accepts single events or batches (up to 100 events).
  *
- * Authentication: API Key or Bearer token
+ * Authentication: API Key in x-api-key header
  *
  * Single event:
- * { "brandId": "...", "eventType": "page_view", ... }
+ * { "brandId": "SG-XXXXXX", "eventType": "page_view", ... }
  *
  * Batch:
  * { "events": [{ ... }, { ... }] }
@@ -51,33 +87,10 @@ export async function POST(request: NextRequest) {
   try {
     // Get API key from header
     const apiKey = request.headers.get('x-api-key')
-    const authHeader = request.headers.get('authorization')
 
-    let organizationId: string | null = null
-
-    // API Key authentication (for SDK/server-side)
-    if (apiKey) {
-      // In production: Validate API key and get organization
-      // const org = await validateApiKey(apiKey)
-      organizationId = 'org_demo' // Mock for now
-    }
-    // Bearer token authentication (for authenticated users)
-    else if (authHeader?.startsWith('Bearer ')) {
-      const supabase = createClient()
-      const { data: { user }, error } = await supabase.auth.getUser()
-
-      if (error || !user) {
-        return NextResponse.json(
-          { success: false, error: 'Invalid authentication' },
-          { status: 401 }
-        )
-      }
-
-      // In production: Get user's organization
-      organizationId = 'org_demo' // Mock for now
-    } else {
+    if (!apiKey) {
       return NextResponse.json(
-        { success: false, error: 'API key or Bearer token required' },
+        { success: false, error: 'API key required in x-api-key header' },
         { status: 401 }
       )
     }
@@ -86,7 +99,7 @@ export async function POST(request: NextRequest) {
 
     // Handle batch vs single event
     const isBatch = Array.isArray(body.events)
-    const events: MarketingEventInput[] = isBatch ? body.events : [body]
+    const events = isBatch ? body.events : [body]
 
     // Validate batch size
     if (events.length > 100) {
@@ -103,28 +116,88 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Check rate limit for each brand
-    const brandIds = Array.from(new Set(events.map(e => e.brandId)))
-    for (const brandId of brandIds) {
-      if (!checkRateLimit(brandId)) {
-        return NextResponse.json(
-          {
-            success: false,
-            error: `Rate limit exceeded for brand ${brandId}`,
-            retryAfter: 60,
+    // Process and save events
+    const successful: any[] = []
+    const failed: any[] = []
+
+    for (const event of events) {
+      try {
+        // Get brandId - could be tracking ID or actual brand ID
+        const trackingId = event.brandId
+
+        if (!trackingId) {
+          failed.push({ event, error: 'brandId is required' })
+          continue
+        }
+
+        // Check rate limit
+        if (!checkRateLimit(trackingId)) {
+          failed.push({ event, error: 'Rate limit exceeded' })
+          continue
+        }
+
+        // Find brand by tracking ID (stored in settings.tracking.trackingId)
+        // or by actual brand ID
+        let brand = await db.saaSBrand.findFirst({
+          where: {
+            OR: [
+              { id: trackingId },
+              {
+                settings: {
+                  path: ['tracking', 'trackingId'],
+                  equals: trackingId,
+                },
+              },
+            ],
+            deletedAt: null,
           },
-          { status: 429 }
-        )
+        })
+
+        if (!brand) {
+          failed.push({ event, error: 'Invalid brand ID' })
+          continue
+        }
+
+        // Validate API key matches
+        const brandSettings = brand.settings as any
+        if (brandSettings?.tracking?.apiKey !== apiKey) {
+          failed.push({ event, error: 'Invalid API key for this brand' })
+          continue
+        }
+
+        // Map event type
+        const eventType = EVENT_TYPE_MAP[event.eventType?.toLowerCase()] || 'PAGE_VIEW'
+
+        // Create the event in database
+        const savedEvent = await db.marketingEvent.create({
+          data: {
+            brandId: brand.id,
+            eventName: eventType as any,
+            timestamp: event.timestamp ? new Date(event.timestamp) : new Date(),
+            userId: event.properties?.userId || event.userId || null,
+            anonymousId: event.visitorId || null,
+            sessionId: event.sessionId || null,
+            utmSource: event.utmSource || null,
+            utmMedium: event.utmMedium || null,
+            utmCampaign: event.utmCampaign || null,
+            utmTerm: event.utmTerm || null,
+            utmContent: event.utmContent || null,
+            referrer: event.referrer || null,
+            landingPage: event.url || null,
+            properties: event.properties || {},
+            revenue: event.properties?.revenue || event.revenue || null,
+            currency: event.properties?.currency || event.currency || 'USD',
+            processedAt: new Date(),
+          },
+        })
+
+        successful.push({ id: savedEvent.id, eventType: savedEvent.eventName })
+      } catch (err: any) {
+        console.error('Error processing event:', err)
+        failed.push({ event, error: err.message || 'Processing failed' })
       }
     }
 
-    // Process events
-    const result = await processBatch(events, organizationId)
-
-    // In production: Store events in database
-    // await db.marketingEvent.createMany({ data: result.successful })
-
-    // Log ingestion metrics (every 30 minutes in production via cron)
     const processingTime = Date.now() - startTime
 
     // Success response
@@ -132,18 +205,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         success: true,
         data: {
-          accepted: result.successful.length,
-          rejected: result.failed.length,
-          errors: result.failed.length > 0 ? result.failed : undefined,
+          accepted: successful.length,
+          rejected: failed.length,
+          errors: failed.length > 0 ? failed.map(f => f.error) : undefined,
           processingTimeMs: processingTime,
         },
       })
     } else {
-      if (result.successful.length > 0) {
+      if (successful.length > 0) {
         return NextResponse.json({
           success: true,
           data: {
-            eventId: result.successful[0].id,
+            eventId: successful[0].id,
             processingTimeMs: processingTime,
           },
         })
@@ -151,13 +224,13 @@ export async function POST(request: NextRequest) {
         return NextResponse.json(
           {
             success: false,
-            error: result.failed[0]?.error || 'Event processing failed',
+            error: failed[0]?.error || 'Event processing failed',
           },
           { status: 400 }
         )
       }
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error('Event ingestion error:', error)
     return NextResponse.json(
       { success: false, error: 'Failed to process events' },
@@ -168,7 +241,7 @@ export async function POST(request: NextRequest) {
 
 /**
  * OPTIONS /api/events/ingest
- * CORS preflight
+ * CORS preflight - allow any origin for tracking script
  */
 export async function OPTIONS() {
   return new NextResponse(null, {
@@ -177,6 +250,19 @@ export async function OPTIONS() {
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'POST, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type, x-api-key, Authorization',
+      'Access-Control-Max-Age': '86400',
     },
+  })
+}
+
+/**
+ * GET /api/events/ingest
+ * Health check endpoint
+ */
+export async function GET() {
+  return NextResponse.json({
+    success: true,
+    message: 'Event ingest API is running',
+    timestamp: new Date().toISOString(),
   })
 }

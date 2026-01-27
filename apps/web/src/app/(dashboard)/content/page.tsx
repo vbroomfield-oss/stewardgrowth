@@ -153,9 +153,9 @@ export default function ContentPage() {
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" asChild>
-            <Link href="/content/calendar">
+            <Link href="/ai/plans">
               <Calendar className="mr-2 h-4 w-4" />
-              Calendar
+              Weekly Plans
             </Link>
           </Button>
           <Button asChild>

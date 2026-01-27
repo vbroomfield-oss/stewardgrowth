@@ -170,11 +170,9 @@ export default function AdsPage() {
             <option value="30d">Last 30 days</option>
             <option value="90d">Last 90 days</option>
           </select>
-          <Button asChild>
-            <Link href="/ads/create">
-              <Plus className="mr-2 h-4 w-4" />
-              New Campaign
-            </Link>
+          <Button disabled title="Coming soon">
+            <Plus className="mr-2 h-4 w-4" />
+            New Campaign
           </Button>
         </div>
       </div>

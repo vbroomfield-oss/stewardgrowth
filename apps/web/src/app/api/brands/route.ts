@@ -1,55 +1,92 @@
 export const dynamic = 'force-dynamic'
 
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { db } from '@/lib/db'
+import { getUserWithOrganization } from '@/lib/auth/get-user-org'
+import crypto from 'crypto'
 
-// GET /api/brands - List all brands for the organization
+// Generate a secure API key for the brand
+function generateApiKey(): string {
+  return `sg_${crypto.randomBytes(24).toString('base64url')}`
+}
+
+// Generate a tracking ID for the brand
+function generateTrackingId(): string {
+  return `SG-${crypto.randomBytes(4).toString('hex').toUpperCase()}`
+}
+
+// GET /api/brands - List all brands for the user's organization
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createClient()
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    const userOrg = await getUserWithOrganization()
 
-    if (authError || !user) {
+    if (!userOrg) {
       return NextResponse.json(
         { success: false, error: 'Unauthorized' },
         { status: 401 }
       )
     }
 
-    // Mock data for now - will be replaced with database query
-    const brands = [
-      {
-        id: '1',
-        name: 'StewardMAX',
-        slug: 'stewardmax',
-        domain: 'stewardmax.com',
-        color: '#3b82f6',
-        isActive: true,
-        createdAt: '2024-01-01T00:00:00Z',
+    // Fetch brands from database
+    const brands = await db.saaSBrand.findMany({
+      where: {
+        organizationId: userOrg.organizationId,
+        deletedAt: null,
       },
-      {
-        id: '2',
-        name: 'StewardRing',
-        slug: 'stewardring',
-        domain: 'stewardring.com',
-        color: '#22c55e',
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        domain: true,
+        logo: true,
+        brandVoice: true,
+        targetAudiences: true,
+        goals: true,
+        budgetConstraints: true,
+        approvalRules: true,
         isActive: true,
-        createdAt: '2024-01-15T00:00:00Z',
+        settings: true,
+        createdAt: true,
+        updatedAt: true,
+        // Include counts for display
+        _count: {
+          select: {
+            events: true,
+            contentPosts: true,
+            adCampaigns: true,
+          },
+        },
       },
-      {
-        id: '3',
-        name: 'StewardPro',
-        slug: 'stewardpro',
-        domain: 'stewardpro.io',
-        color: '#a855f7',
-        isActive: true,
-        createdAt: '2024-02-01T00:00:00Z',
-      },
-    ]
+    })
+
+    // Transform for API response
+    const transformedBrands = brands.map((brand) => ({
+      id: brand.id,
+      name: brand.name,
+      slug: brand.slug,
+      domain: brand.domain,
+      logo: brand.logo,
+      brandVoice: brand.brandVoice,
+      targetAudiences: brand.targetAudiences,
+      goals: brand.goals,
+      budgetConstraints: brand.budgetConstraints,
+      approvalRules: brand.approvalRules,
+      isActive: brand.isActive,
+      settings: brand.settings,
+      createdAt: brand.createdAt.toISOString(),
+      updatedAt: brand.updatedAt.toISOString(),
+      // Extract color from settings or use default
+      color: (brand.settings as any)?.color || '#6366f1',
+      // Include counts
+      eventsCount: brand._count.events,
+      contentCount: brand._count.contentPosts,
+      campaignsCount: brand._count.adCampaigns,
+    }))
 
     return NextResponse.json({
       success: true,
-      data: brands,
+      data: transformedBrands,
     })
   } catch (error) {
     console.error('Error fetching brands:', error)
@@ -63,10 +100,9 @@ export async function GET(request: NextRequest) {
 // POST /api/brands - Create a new brand
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createClient()
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    const userOrg = await getUserWithOrganization()
 
-    if (authError || !user) {
+    if (!userOrg) {
       return NextResponse.json(
         { success: false, error: 'Unauthorized' },
         { status: 401 }
@@ -78,12 +114,29 @@ export async function POST(request: NextRequest) {
       name,
       slug,
       domain,
+      description,
+      industry,
+      // Domains
+      primaryDomain,
+      appDomain,
+      marketingSite,
+      landingPages,
+      // Brand Voice
+      tone,
+      personality,
+      tagline,
+      keywords,
+      avoidWords,
+      // Audiences
+      audiences,
+      // Budget
+      monthlyBudget,
+      dailyMax,
+      googleBudget,
+      metaBudget,
+      linkedinBudget,
+      // Other
       color,
-      brandVoice,
-      targetAudiences,
-      goals,
-      budgetConstraints,
-      approvalRules,
     } = body
 
     // Validate required fields
@@ -94,28 +147,91 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // In production, create in database
-    const brand = {
-      id: `brand-${Date.now()}`,
-      name,
-      slug,
-      domain,
-      color: color || '#6366f1',
-      brandVoice: brandVoice || {},
-      targetAudiences: targetAudiences || [],
-      goals: goals || {},
-      budgetConstraints: budgetConstraints || {},
-      approvalRules: approvalRules || {
-        requireApproval: ['content', 'campaigns', 'budgetChanges'],
-        adSpendThreshold: 500,
+    // Check if slug already exists for this organization
+    const existingBrand = await db.saaSBrand.findFirst({
+      where: {
+        organizationId: userOrg.organizationId,
+        slug: slug.toLowerCase(),
+        deletedAt: null,
       },
-      isActive: true,
-      createdAt: new Date().toISOString(),
+    })
+
+    if (existingBrand) {
+      return NextResponse.json(
+        { success: false, error: 'A brand with this slug already exists' },
+        { status: 400 }
+      )
     }
+
+    // Generate tracking credentials
+    const apiKey = generateApiKey()
+    const trackingId = generateTrackingId()
+
+    // Create the brand
+    const brand = await db.saaSBrand.create({
+      data: {
+        organizationId: userOrg.organizationId,
+        name,
+        slug: slug.toLowerCase(),
+        domain: primaryDomain || domain,
+        brandVoice: {
+          tone: tone || 'professional',
+          personality: personality || '',
+          tagline: tagline || '',
+          keywords: keywords ? keywords.split(',').map((k: string) => k.trim()) : [],
+          avoidWords: avoidWords ? avoidWords.split(',').map((w: string) => w.trim()) : [],
+        },
+        targetAudiences: audiences || [],
+        goals: {
+          monthly: {
+            leads: 100,
+            trials: 25,
+            revenue: monthlyBudget ? parseInt(monthlyBudget) * 10 : 50000,
+          },
+        },
+        budgetConstraints: {
+          monthly: monthlyBudget ? parseInt(monthlyBudget) : 5000,
+          dailyMax: dailyMax ? parseInt(dailyMax) : 200,
+          platforms: {
+            google: googleBudget ? parseInt(googleBudget) : 2000,
+            meta: metaBudget ? parseInt(metaBudget) : 1500,
+            linkedin: linkedinBudget ? parseInt(linkedinBudget) : 500,
+          },
+        },
+        approvalRules: {
+          requireApproval: ['content', 'campaigns', 'budgetChanges'],
+          adSpendThreshold: 500,
+        },
+        settings: {
+          color: color || '#6366f1',
+          description: description || '',
+          industry: industry || '',
+          domains: {
+            primary: primaryDomain || '',
+            app: appDomain || '',
+            marketing: marketingSite || '',
+            landing: landingPages || [],
+          },
+          tracking: {
+            apiKey,
+            trackingId,
+          },
+        },
+        isActive: true,
+      },
+    })
 
     return NextResponse.json({
       success: true,
-      data: brand,
+      data: {
+        id: brand.id,
+        name: brand.name,
+        slug: brand.slug,
+        domain: brand.domain,
+        trackingId,
+        apiKey,
+        createdAt: brand.createdAt.toISOString(),
+      },
     })
   } catch (error) {
     console.error('Error creating brand:', error)

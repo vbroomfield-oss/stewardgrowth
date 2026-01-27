@@ -345,35 +345,35 @@ export default function SEOPage() {
 
       {/* Quick Links */}
       <div className="grid md:grid-cols-3 gap-4">
-        <Link href="/seo/keywords">
+        <Link href="/ai">
           <Card className="hover:border-blue-500 transition-colors cursor-pointer">
             <CardContent className="p-4 flex items-center gap-3">
               <Search className="h-5 w-5 text-blue-500" />
               <div>
-                <p className="font-medium">Keyword Research</p>
-                <p className="text-sm text-gray-500">Find new opportunities</p>
+                <p className="font-medium">AI Recommendations</p>
+                <p className="text-sm text-gray-500">Get AI-powered insights</p>
               </div>
             </CardContent>
           </Card>
         </Link>
-        <Link href="/seo/backlinks">
+        <Link href="/analytics/events">
           <Card className="hover:border-green-500 transition-colors cursor-pointer">
             <CardContent className="p-4 flex items-center gap-3">
               <Globe className="h-5 w-5 text-green-500" />
               <div>
-                <p className="font-medium">Backlink Analysis</p>
-                <p className="text-sm text-gray-500">Monitor your link profile</p>
+                <p className="font-medium">Event Analytics</p>
+                <p className="text-sm text-gray-500">View traffic sources</p>
               </div>
             </CardContent>
           </Card>
         </Link>
-        <Link href="/seo/content">
+        <Link href="/content">
           <Card className="hover:border-purple-500 transition-colors cursor-pointer">
             <CardContent className="p-4 flex items-center gap-3">
               <FileText className="h-5 w-5 text-purple-500" />
               <div>
-                <p className="font-medium">Content Opportunities</p>
-                <p className="text-sm text-gray-500">AI content suggestions</p>
+                <p className="font-medium">Content Hub</p>
+                <p className="text-sm text-gray-500">Create SEO content</p>
               </div>
             </CardContent>
           </Card>
