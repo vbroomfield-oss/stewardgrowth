@@ -50,7 +50,7 @@ export default function BrandsPage() {
         throw new Error(result.error || 'Failed to fetch brands')
       }
 
-      setBrands(result.data || [])
+      setBrands(result.brands || [])
     } catch (err: any) {
       setError(err.message)
     } finally {
