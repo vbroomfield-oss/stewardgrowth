@@ -18,9 +18,13 @@ function generateTrackingId(): string {
 // GET /api/brands - List all brands for the user's organization
 export async function GET(request: NextRequest) {
   try {
+    console.log('[API /api/brands] Starting request...')
+
     const userOrg = await getUserWithOrganization()
+    console.log('[API /api/brands] userOrg:', userOrg ? 'found' : 'null')
 
     if (!userOrg) {
+      console.log('[API /api/brands] Unauthorized - no user session')
       return NextResponse.json(
         { success: false, error: 'Unauthorized' },
         { status: 401 }
@@ -89,9 +93,10 @@ export async function GET(request: NextRequest) {
       brands: transformedBrands,
     })
   } catch (error) {
-    console.error('Error fetching brands:', error)
+    console.error('[API /api/brands] Error:', error)
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
     return NextResponse.json(
-      { success: false, error: 'Failed to fetch brands' },
+      { success: false, error: `Failed to fetch brands: ${errorMessage}` },
       { status: 500 }
     )
   }

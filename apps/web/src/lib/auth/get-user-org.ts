@@ -17,10 +17,18 @@ export interface UserWithOrg {
  * Creates the user and organization if they don't exist (first-time setup).
  */
 export async function getUserWithOrganization(): Promise<UserWithOrg | null> {
+  console.log('[getUserWithOrganization] Starting...')
   const supabase = createClient()
   const { data: { user: supabaseUser }, error } = await supabase.auth.getUser()
 
+  console.log('[getUserWithOrganization] Supabase auth result:', {
+    hasUser: !!supabaseUser,
+    userId: supabaseUser?.id?.slice(0, 8),
+    error: error?.message || null,
+  })
+
   if (error || !supabaseUser) {
+    console.log('[getUserWithOrganization] No authenticated user')
     return null
   }
 
