@@ -18,6 +18,13 @@ export interface UserWithOrg {
  */
 export async function getUserWithOrganization(): Promise<UserWithOrg | null> {
   console.log('[getUserWithOrganization] Starting...')
+
+  // Debug: Check what cookies are available
+  const { cookies } = await import('next/headers')
+  const cookieStore = cookies()
+  const allCookies = cookieStore.getAll()
+  console.log('[getUserWithOrganization] Available cookies:', allCookies.map(c => c.name))
+
   const supabase = createClient()
   const { data: { user: supabaseUser }, error } = await supabase.auth.getUser()
 
