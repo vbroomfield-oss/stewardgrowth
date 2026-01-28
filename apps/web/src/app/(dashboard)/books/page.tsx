@@ -64,9 +64,11 @@ export default function BooksPage() {
             Manage your books, Amazon Ads, and launch campaigns
           </p>
         </div>
-        <Button disabled>
-          <Plus className="mr-2 h-4 w-4" />
-          Add Book
+        <Button asChild>
+          <Link href="/books/new">
+            <Plus className="mr-2 h-4 w-4" />
+            Add Book
+          </Link>
         </Button>
       </div>
 
@@ -163,9 +165,11 @@ export default function BooksPage() {
                     <BookOpen className="h-12 w-12 mx-auto mb-4 opacity-50" />
                     <p>No books added yet</p>
                     <p className="text-sm mt-1">Add your first book to start tracking sales and managing ads</p>
-                    <Button variant="outline" className="mt-4" disabled>
-                      <Plus className="mr-2 h-4 w-4" />
-                      Add Book
+                    <Button variant="outline" className="mt-4" asChild>
+                      <Link href="/books/new">
+                        <Plus className="mr-2 h-4 w-4" />
+                        Add Book
+                      </Link>
                     </Button>
                   </div>
                 </CardContent>
