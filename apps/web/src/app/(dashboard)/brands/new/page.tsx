@@ -144,41 +144,70 @@ export default function NewBrandPage() {
 
       if (result.suggestions) {
         setAiSuggestions(result.suggestions)
+        const s = result.suggestions
 
-        // Update form with suggestions
-        if (result.suggestions.suggestedName) {
-          updateForm('name', result.suggestions.suggestedName)
-          updateForm('slug', result.suggestions.suggestedName.toLowerCase().replace(/[^a-z0-9]+/g, '-'))
+        // Update form with all suggestions
+        if (s.suggestedName) {
+          updateForm('name', s.suggestedName)
         }
-        updateForm('tagline', result.suggestions.suggestedTagline || '')
-        updateForm('industry', result.suggestions.suggestedIndustry || '')
+        if (s.suggestedSlug) {
+          updateForm('slug', s.suggestedSlug)
+        } else if (s.suggestedName) {
+          updateForm('slug', s.suggestedName.toLowerCase().replace(/[^a-z0-9]+/g, '-'))
+        }
+        if (s.suggestedDescription) {
+          updateForm('description', s.suggestedDescription)
+        }
+        updateForm('tagline', s.suggestedTagline || '')
+        updateForm('industry', s.suggestedIndustry || '')
 
-        if (result.suggestions.brandVoice) {
-          updateForm('tone', result.suggestions.brandVoice.tone?.[0]?.toLowerCase() || 'professional')
-          updateForm('keywords', result.suggestions.brandVoice.keywords?.join(', ') || '')
-          updateForm('avoidWords', result.suggestions.brandVoice.avoid?.join(', ') || '')
+        // Domains
+        if (s.primaryDomain) updateForm('primaryDomain', s.primaryDomain)
+        if (s.appDomain) updateForm('appDomain', s.appDomain)
+        if (s.marketingSite) updateForm('marketingSite', s.marketingSite)
+
+        // Brand voice
+        if (s.brandVoice) {
+          updateForm('tone', s.brandVoice.tone?.[0]?.toLowerCase() || 'professional')
+          updateForm('keywords', s.brandVoice.keywords?.join(', ') || '')
+          updateForm('avoidWords', s.brandVoice.avoid?.join(', ') || '')
         }
 
-        if (result.suggestions.targetAudiences) {
-          updateForm('audiences', result.suggestions.targetAudiences.map((a: string) => ({
-            name: a,
-            role: '',
-            painPoints: '',
-            goals: '',
-          })))
+        // Target audiences - handle both string array and object array formats
+        if (s.targetAudiences && Array.isArray(s.targetAudiences)) {
+          if (typeof s.targetAudiences[0] === 'string') {
+            updateForm('audiences', s.targetAudiences.map((a: string) => ({
+              name: a,
+              role: '',
+              painPoints: '',
+              goals: '',
+            })))
+          } else {
+            // Already formatted as objects with name, role, painPoints, goals
+            updateForm('audiences', s.targetAudiences)
+          }
         }
 
-        if (result.suggestions.recommendedPlan) {
-          setRecommendedPlan(result.suggestions.recommendedPlan)
+        // Budget
+        if (s.monthlyBudget) {
+          updateForm('monthlyBudget', s.monthlyBudget.toString())
+        }
+
+        if (s.recommendedPlan) {
+          setRecommendedPlan(s.recommendedPlan)
         }
 
         // Build AI response message
         let aiResponse = "Based on your description, I've set up your brand profile:\n\n"
-        aiResponse += `• **Industry**: ${result.suggestions.suggestedIndustry?.replace('-', ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()) || 'General SaaS'}\n`
-        aiResponse += `• **Tagline**: "${result.suggestions.suggestedTagline}"\n`
-        aiResponse += `• **Target Audiences**: ${result.suggestions.targetAudiences?.join(', ')}\n`
-        aiResponse += `• **Tone**: ${result.suggestions.brandVoice?.tone?.join(', ')}\n\n`
-        aiResponse += "I've pre-filled the wizard with these settings. You can review and adjust them, or click **Continue to Wizard** to proceed."
+        aiResponse += `• **Name**: ${s.suggestedName || 'Not detected'}\n`
+        aiResponse += `• **Industry**: ${s.suggestedIndustry?.replace(/-/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()) || 'General SaaS'}\n`
+        aiResponse += `• **Tagline**: "${s.suggestedTagline || 'Not set'}"\n`
+        if (s.primaryDomain) aiResponse += `• **Domain**: ${s.primaryDomain}\n`
+        const audienceNames = s.targetAudiences?.map((a: any) => typeof a === 'string' ? a : a.name) || []
+        aiResponse += `• **Target Audiences**: ${audienceNames.join(', ') || 'Not set'}\n`
+        aiResponse += `• **Tone**: ${s.brandVoice?.tone?.join(', ') || 'Professional'}\n`
+        if (s.monthlyBudget) aiResponse += `• **Monthly Budget**: $${s.monthlyBudget}\n`
+        aiResponse += "\nI've pre-filled ALL wizard fields with these settings. Click **Continue to Wizard** to review and make any adjustments."
 
         setChatMessages(prev => [...prev, { role: 'ai', content: aiResponse }])
       }

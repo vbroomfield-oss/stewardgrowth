@@ -1,5 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getUserWithOrganization } from '@/lib/auth/get-user-org'
+import Anthropic from '@anthropic-ai/sdk'
+
+// Initialize Anthropic client
+const anthropic = new Anthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY,
+})
 
 // Industry templates with pre-filled data
 const industryTemplates: Record<string, {
@@ -164,14 +170,107 @@ const industryTemplates: Record<string, {
   },
 }
 
-// Simple AI-like suggestions based on product description
-function generateSuggestions(description: string): {
+// Use Claude AI to parse product description and extract brand details
+async function generateSuggestionsWithAI(description: string): Promise<{
   suggestedName: string
+  suggestedSlug: string
   suggestedTagline: string
   suggestedIndustry: string
-  targetAudiences: string[]
+  suggestedDescription: string
+  primaryDomain: string
+  appDomain: string
+  marketingSite: string
+  targetAudiences: Array<{ name: string; role: string; painPoints: string; goals: string }>
   brandVoice: { tone: string[]; keywords: string[]; avoid: string[] }
   recommendedPlan: { name: string; price: number; features: string[]; reason: string }
+  monthlyBudget: number
+}> {
+  const systemPrompt = `You are a marketing assistant helping to set up a brand in StewardGrowth.
+Extract structured information from the user's product description and return it as JSON.
+
+You MUST return valid JSON with this exact structure:
+{
+  "suggestedName": "Product Name",
+  "suggestedSlug": "product-name",
+  "suggestedTagline": "The product tagline",
+  "suggestedIndustry": "church-management|saas-b2b|saas-b2c|ecommerce|healthcare|fintech|education|other",
+  "suggestedDescription": "A 1-2 sentence description",
+  "primaryDomain": "domain.com",
+  "appDomain": "app.domain.com",
+  "marketingSite": "www.domain.com",
+  "targetAudiences": [
+    {
+      "name": "Audience Name",
+      "role": "Their Role/Title",
+      "painPoints": "What problems they face",
+      "goals": "What they want to achieve"
+    }
+  ],
+  "brandVoice": {
+    "tone": ["Tone1", "Tone2"],
+    "keywords": ["keyword1", "keyword2"],
+    "avoid": ["word1", "word2"]
+  },
+  "recommendedPlan": {
+    "name": "Growth",
+    "price": 199,
+    "features": ["Feature 1", "Feature 2"],
+    "reason": "Why this plan fits"
+  },
+  "monthlyBudget": 5000
+}
+
+Parse ALL details from the user's description. If they provide specific values (name, domains, audiences, etc.), use those exact values. Only generate suggestions for missing fields.`
+
+  try {
+    const message = await anthropic.messages.create({
+      model: 'claude-3-5-haiku-20241022',
+      max_tokens: 2000,
+      messages: [
+        {
+          role: 'user',
+          content: `Parse this product description and extract all brand details:\n\n${description}`,
+        },
+      ],
+      system: systemPrompt,
+    })
+
+    // Extract the text content
+    const textContent = message.content.find((block) => block.type === 'text')
+    if (!textContent || textContent.type !== 'text') {
+      throw new Error('No text response from AI')
+    }
+
+    // Parse JSON from response (handle markdown code blocks)
+    let jsonStr = textContent.text
+    const jsonMatch = jsonStr.match(/```(?:json)?\s*([\s\S]*?)```/)
+    if (jsonMatch) {
+      jsonStr = jsonMatch[1]
+    }
+
+    const parsed = JSON.parse(jsonStr.trim())
+    return parsed
+  } catch (error) {
+    console.error('AI parsing error:', error)
+    // Fall back to simple extraction
+    return generateSuggestionsFallback(description)
+  }
+}
+
+// Fallback simple extraction (original logic)
+function generateSuggestionsFallback(description: string): {
+  suggestedName: string
+  suggestedSlug: string
+  suggestedTagline: string
+  suggestedIndustry: string
+  suggestedDescription: string
+  primaryDomain: string
+  appDomain: string
+  marketingSite: string
+  targetAudiences: Array<{ name: string; role: string; painPoints: string; goals: string }>
+  brandVoice: { tone: string[]; keywords: string[]; avoid: string[] }
+  recommendedPlan: { name: string; price: number; features: string[]; reason: string }
+  monthlyBudget: number
 } {
   const lowerDesc = description.toLowerCase()
 
@@ -193,27 +292,24 @@ function generateSuggestions(description: string): {
 
   const template = industryTemplates[industry]
 
-  // Extract potential name from description (first capitalized words or quoted text)
-  const nameMatch = description.match(/"([^"]+)"/) || description.match(/called\s+(\w+)/i) || description.match(/named\s+(\w+)/i)
+  // Extract potential name from description
+  const nameMatch = description.match(/Name:\s*(\w+)/i) || description.match(/"([^"]+)"/) || description.match(/called\s+(\w+)/i)
   const suggestedName = nameMatch ? nameMatch[1] : ''
-
-  // Generate tagline based on description keywords
-  let suggestedTagline = template.tagline
-  if (lowerDesc.includes('simple') || lowerDesc.includes('easy')) {
-    suggestedTagline = 'Simplicity meets power'
-  } else if (lowerDesc.includes('fast') || lowerDesc.includes('quick')) {
-    suggestedTagline = 'Speed up your success'
-  } else if (lowerDesc.includes('secure') || lowerDesc.includes('safe')) {
-    suggestedTagline = 'Security you can trust'
-  }
+  const suggestedSlug = suggestedName.toLowerCase().replace(/[^a-z0-9]+/g, '-')
 
   return {
     suggestedName,
-    suggestedTagline,
+    suggestedSlug,
+    suggestedTagline: template.tagline,
     suggestedIndustry: industry,
-    targetAudiences: template.targetAudiences,
+    suggestedDescription: '',
+    primaryDomain: '',
+    appDomain: '',
+    marketingSite: '',
+    targetAudiences: template.targetAudiences.map(name => ({ name, role: '', painPoints: '', goals: '' })),
     brandVoice: template.brandVoice,
     recommendedPlan: template.recommendedPlan,
+    monthlyBudget: template.suggestedBudget.monthly,
   }
 }
 
@@ -238,12 +334,12 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ template })
 
       case 'suggest':
-        // Generate suggestions from product description
+        // Generate suggestions from product description using AI
         const description = data?.description || ''
         if (!description) {
           return NextResponse.json({ error: 'Description required' }, { status: 400 })
         }
-        const suggestions = generateSuggestions(description)
+        const suggestions = await generateSuggestionsWithAI(description)
         return NextResponse.json({ suggestions })
 
       case 'templates-list':
