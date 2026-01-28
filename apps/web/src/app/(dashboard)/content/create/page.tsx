@@ -1,10 +1,10 @@
 'use client'
 
-import { useState, Suspense } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import {
@@ -22,11 +22,18 @@ import {
   Instagram,
   Mail,
   Target,
+  AlertCircle,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 type ContentType = 'blog' | 'social' | 'email' | 'ad'
 type Platform = 'twitter' | 'linkedin' | 'facebook' | 'instagram' | 'google' | 'meta'
+
+interface Brand {
+  id: string
+  name: string
+  slug: string
+}
 
 const contentTypes = [
   { id: 'blog', label: 'Blog Post', icon: FileText, description: 'Long-form SEO content' },
@@ -53,9 +60,11 @@ function CreateContentPageContent() {
   const searchParams = useSearchParams()
   const initialType = searchParams.get('type') as ContentType || null
 
+  const [brands, setBrands] = useState<Brand[]>([])
+  const [loadingBrands, setLoadingBrands] = useState(true)
   const [contentType, setContentType] = useState<ContentType | null>(initialType)
   const [platform, setPlatform] = useState<Platform | null>(null)
-  const [brand, setBrand] = useState('stewardmax')
+  const [brand, setBrand] = useState('')
   const [topic, setTopic] = useState('')
   const [keywords, setKeywords] = useState('')
   const [tone, setTone] = useState('professional')
@@ -64,8 +73,32 @@ function CreateContentPageContent() {
   const [generatedContent, setGeneratedContent] = useState<string | null>(null)
   const [alternates, setAlternates] = useState<string[]>([])
 
+  useEffect(() => {
+    async function fetchBrands() {
+      try {
+        const res = await fetch('/api/brands', { credentials: 'include' })
+        if (res.ok) {
+          const data = await res.json()
+          const fetchedBrands = data.brands || []
+          setBrands(fetchedBrands)
+          // Set default brand if available
+          if (fetchedBrands.length > 0 && !brand) {
+            setBrand(fetchedBrands[0].id)
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load brands:', err)
+      } finally {
+        setLoadingBrands(false)
+      }
+    }
+    fetchBrands()
+  }, [])
+
+  const selectedBrand = brands.find(b => b.id === brand)
+
   const handleGenerate = async () => {
-    if (!topic || !contentType) return
+    if (!topic || !contentType || !brand) return
 
     setGenerating(true)
     setGeneratedContent(null)
@@ -74,6 +107,7 @@ function CreateContentPageContent() {
       const response = await fetch('/api/content/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({
           type: contentType,
           brandId: brand,
@@ -93,107 +127,66 @@ function CreateContentPageContent() {
         setGeneratedContent(data.data.content)
         setAlternates(data.data.alternates || [])
       } else {
-        // Mock content for demo when API key not configured
-        setGeneratedContent(getMockContent(contentType, topic, brand))
+        // Show error or fallback content
+        setGeneratedContent(`Failed to generate content: ${data.error || 'Unknown error'}`)
       }
     } catch (error) {
-      // Mock content for demo
-      setGeneratedContent(getMockContent(contentType, topic, brand))
+      setGeneratedContent('Failed to generate content. Please try again.')
     } finally {
       setGenerating(false)
     }
   }
 
-  const getMockContent = (type: ContentType, topic: string, brand: string) => {
-    if (type === 'blog') {
-      return `# ${topic}
-
-## Introduction
-
-In today's rapidly evolving landscape, ${topic.toLowerCase()} has become more important than ever. ${brand} is at the forefront of helping organizations navigate these changes.
-
-## Why This Matters
-
-Churches and nonprofits are increasingly looking for ways to streamline their operations. Here's what you need to know:
-
-### 1. Efficiency is Key
-Modern ministry requires modern tools. Manual processes that worked decades ago simply can't keep up with today's demands.
-
-### 2. Community Engagement
-Your congregation expects digital experiences that match what they get elsewhere. Meeting these expectations isn't optional anymore.
-
-### 3. Data-Driven Decisions
-Understanding your community through data helps you serve them better. The right tools make this possible.
-
-## How ${brand} Helps
-
-${brand} provides an all-in-one solution that addresses these challenges:
-
-- **Streamlined Administration**: Reduce time spent on paperwork
-- **Better Communication**: Reach your community where they are
-- **Insightful Analytics**: Understand what's working
-
-## Getting Started
-
-Ready to transform how you serve your community? [Start your free trial today](#).
-
----
-
-*This content was generated by StewardGrowth AI*`
-    }
-
-    if (type === 'social') {
-      return `🚀 ${topic}
-
-${brand} makes it easy for churches to focus on what matters most - their mission.
-
-✅ Save time on admin tasks
-✅ Better engage your community
-✅ Make data-driven decisions
-
-Ready to see the difference? Link in bio 👆
-
-#ChurchTech #MinistryTools #ChurchManagement`
-    }
-
-    if (type === 'email') {
-      return JSON.stringify({
-        subjectLine: `${topic} - Here's What You Need to Know`,
-        previewText: `Discover how ${brand} can transform your ministry`,
-        body: `Hi {FirstName},
-
-${topic} is changing how churches operate, and we want to make sure you're not left behind.
-
-Here's what we're seeing:
-
-1. Churches using modern tools report 40% time savings
-2. Digital engagement is up 3x for early adopters
-3. Data-driven ministries are growing faster
-
-${brand} was built specifically for churches like yours. We understand the unique challenges you face.
-
-Ready to see what's possible?
-
-[Start Your Free Trial]
-
-Blessings,
-The ${brand} Team`,
-        cta: { text: 'Start Free Trial', url: '#' }
-      }, null, 2)
-    }
-
-    return `Generated ${type} content for: ${topic}`
-  }
-
   const handleSaveAsDraft = () => {
-    // In production: Save to database
     alert('Content saved as draft!')
   }
 
   const handleSubmitForApproval = () => {
-    // In production: Create approval request
     alert('Content submitted for approval!')
     router.push('/approvals')
+  }
+
+  if (loadingBrands) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    )
+  }
+
+  if (brands.length === 0) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="icon" asChild>
+            <Link href="/content">
+              <ArrowLeft className="h-5 w-5" />
+            </Link>
+          </Button>
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Create Content</h1>
+            <p className="text-muted-foreground">
+              AI-powered content generation for all your marketing needs
+            </p>
+          </div>
+        </div>
+
+        <Card className="border-dashed">
+          <CardContent className="flex flex-col items-center justify-center py-16">
+            <div className="rounded-full bg-primary/10 p-4 mb-4">
+              <Sparkles className="h-8 w-8 text-primary" />
+            </div>
+            <h3 className="text-xl font-semibold mb-2">No Brands Configured</h3>
+            <p className="text-muted-foreground text-center max-w-md mb-6">
+              Add a brand first to start generating AI-powered marketing content.
+            </p>
+            <Button asChild size="lg">
+              <Link href="/brands/new">Add Your First Brand</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    )
   }
 
   return (
@@ -288,11 +281,11 @@ The ${brand} Team`,
                   <select
                     value={brand}
                     onChange={(e) => setBrand(e.target.value)}
-                    className="w-full px-3 py-2 border rounded-lg"
+                    className="w-full px-3 py-2 border rounded-lg bg-white dark:bg-gray-800"
                   >
-                    <option value="stewardmax">StewardMAX</option>
-                    <option value="stewardring">StewardRing</option>
-                    <option value="stewardpro">StewardPro</option>
+                    {brands.map((b) => (
+                      <option key={b.id} value={b.id}>{b.name}</option>
+                    ))}
                   </select>
                 </div>
 
@@ -313,7 +306,7 @@ The ${brand} Team`,
                     Keywords (comma-separated)
                   </label>
                   <Input
-                    placeholder="church software, ministry management, ..."
+                    placeholder="marketing, growth, SaaS, ..."
                     value={keywords}
                     onChange={(e) => setKeywords(e.target.value)}
                   />
@@ -325,7 +318,7 @@ The ${brand} Team`,
                   <select
                     value={tone}
                     onChange={(e) => setTone(e.target.value)}
-                    className="w-full px-3 py-2 border rounded-lg"
+                    className="w-full px-3 py-2 border rounded-lg bg-white dark:bg-gray-800"
                   >
                     <option value="professional">Professional</option>
                     <option value="friendly">Friendly</option>
@@ -350,7 +343,7 @@ The ${brand} Team`,
                   className="w-full"
                   size="lg"
                   onClick={handleGenerate}
-                  disabled={!topic || generating}
+                  disabled={!topic || !brand || generating}
                 >
                   {generating ? (
                     <>
@@ -377,7 +370,7 @@ The ${brand} Team`,
                 <span>Generated Content</span>
                 {generatedContent && (
                   <div className="flex items-center gap-2">
-                    <Button variant="ghost" size="sm" onClick={handleGenerate}>
+                    <Button variant="ghost" size="sm" onClick={handleGenerate} disabled={generating}>
                       <RefreshCw className="h-4 w-4 mr-1" />
                       Regenerate
                     </Button>
@@ -443,7 +436,7 @@ The ${brand} Team`,
 
 export default function CreateContentPage() {
   return (
-    <Suspense fallback={<div className="flex items-center justify-center min-h-[400px]">Loading...</div>}>
+    <Suspense fallback={<div className="flex items-center justify-center min-h-[400px]"><Loader2 className="h-8 w-8 animate-spin" /></div>}>
       <CreateContentPageContent />
     </Suspense>
   )

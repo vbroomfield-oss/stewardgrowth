@@ -29,9 +29,9 @@ interface Funding {
   autoFundEnabled: boolean
   autoFundAmount: number
   autoFundThreshold: number
-  lastFundedAt: string | null
-  nextFundingDue: string | null
-  status: 'funded' | 'low' | 'empty'
+  lastFundedAt?: string
+  nextFundingDue?: string
+  status: 'funded' | 'low' | 'depleted' | 'paused'
 }
 
 export default function BrandFundingPage({ params }: { params: { slug: string } }) {
@@ -84,9 +84,9 @@ export default function BrandFundingPage({ params }: { params: { slug: string } 
     autoFundEnabled: false,
     autoFundAmount: Math.round(monthlyBudget / 2),
     autoFundThreshold: Math.round(monthlyBudget * 0.2),
-    lastFundedAt: null,
-    nextFundingDue: null,
-    status: monthlyBudget > 0 ? 'funded' : 'empty',
+    lastFundedAt: undefined,
+    nextFundingDue: undefined,
+    status: monthlyBudget > 0 ? 'funded' : 'depleted',
   }
 
   // No transactions yet - will be populated when ad integrations are connected

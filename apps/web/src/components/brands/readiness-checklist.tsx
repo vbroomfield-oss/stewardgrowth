@@ -19,7 +19,7 @@ import {
   ExternalLink,
 } from 'lucide-react'
 
-interface ReadinessItem {
+export interface ReadinessItem {
   id: string
   category: string
   title: string

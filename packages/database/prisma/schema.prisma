@@ -170,9 +170,185 @@ model SaaSBrand {
   aiRecommendations    AIRecommendation[]
   marketingPlans       MarketingPlan[]
   approvalRequests     ApprovalRequest[]
+  books                Book[]
 
   @@unique([organizationId, slug])
   @@index([organizationId])
+}
+
+// ===========================================
+// MODULE 1B: BOOK MARKETING
+// ===========================================
+
+model Book {
+  id        String    @id @default(cuid())
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  brandId String
+  brand   SaaSBrand @relation(fields: [brandId], references: [id], onDelete: Cascade)
+
+  // Basic Info
+  title       String
+  subtitle    String?
+  author      String
+  isbn        String?
+  asin        String?  // Amazon Standard Identification Number
+  description String?  @db.Text
+  publishDate DateTime?
+  category    String?
+
+  // Pricing
+  price       Decimal?
+  currency    String   @default("USD")
+
+  // Platform Links
+  amazonUrl       String?
+  kindleUrl       String?
+  audibleUrl      String?
+  barnesNobleUrl  String?
+
+  // Media
+  coverImage  String?
+
+  // Amazon Ads Integration
+  amazonAdAccountId String?
+
+  // Relations
+  campaigns   BookCampaign[]
+  reviews     BookReview[]
+  salesData   BookSalesData[]
+  launchPlans BookLaunchPlan[]
+
+  isActive Boolean @default(true)
+  settings Json?   @default("{}")
+
+  @@index([brandId])
+}
+
+model BookCampaign {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  bookId String
+  book   Book   @relation(fields: [bookId], references: [id], onDelete: Cascade)
+
+  externalId String?  // Amazon campaign ID
+  name       String
+  type       BookCampaignType
+
+  // Budget
+  dailyBudget Decimal?
+  totalBudget Decimal?
+
+  status BookCampaignStatus @default(DRAFT)
+
+  // Metrics
+  impressions Int     @default(0)
+  clicks      Int     @default(0)
+  orders      Int     @default(0)
+  spend       Decimal @default(0)
+  sales       Decimal @default(0)
+  acos        Decimal?
+
+  lastSyncAt DateTime?
+
+  @@index([bookId])
+}
+
+enum BookCampaignType {
+  SPONSORED_PRODUCTS_AUTO
+  SPONSORED_PRODUCTS_MANUAL
+  SPONSORED_BRANDS
+  SPONSORED_DISPLAY
+  LOCKSCREEN_ADS
+}
+
+enum BookCampaignStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  ENDED
+  ARCHIVED
+}
+
+model BookReview {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  bookId String
+  book   Book   @relation(fields: [bookId], references: [id], onDelete: Cascade)
+
+  platform     String   // amazon, goodreads, etc.
+  externalId   String?
+  rating       Int
+  title        String?
+  content      String?  @db.Text
+  reviewerName String?
+  reviewDate   DateTime
+  verified     Boolean  @default(false)
+  helpful      Int      @default(0)
+
+  // AI Analysis
+  sentiment    String?
+
+  @@index([bookId])
+  @@index([platform])
+}
+
+model BookSalesData {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  bookId String
+  book   Book   @relation(fields: [bookId], references: [id], onDelete: Cascade)
+
+  date        DateTime
+  platform    String   // amazon, kindle, audible, etc.
+
+  unitsSold   Int      @default(0)
+  revenue     Decimal  @default(0)
+  royalties   Decimal  @default(0)
+  pageReads   Int      @default(0)  // Kindle Unlimited
+
+  @@unique([bookId, date, platform])
+  @@index([bookId])
+  @@index([date])
+}
+
+model BookLaunchPlan {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  bookId String
+  book   Book   @relation(fields: [bookId], references: [id], onDelete: Cascade)
+
+  launchDate  DateTime
+  name        String
+  description String?  @db.Text
+
+  // Pre-launch tasks
+  tasks Json? @default("[]")
+
+  // Budget
+  totalBudget  Decimal?
+  adBudget     Decimal?
+  promoBudget  Decimal?
+
+  status BookLaunchStatus @default(PLANNING)
+
+  @@index([bookId])
+}
+
+enum BookLaunchStatus {
+  PLANNING
+  PRE_LAUNCH
+  LAUNCH_WEEK
+  POST_LAUNCH
+  COMPLETED
 }
 
 // ===========================================
