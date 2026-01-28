@@ -55,7 +55,7 @@ export default function EventsPage() {
 
   async function fetchEvents() {
     try {
-      const res = await fetch('/api/events')
+      const res = await fetch('/api/events', { credentials: 'include' })
       if (!res.ok) throw new Error('Failed to fetch events')
       const data = await res.json()
 

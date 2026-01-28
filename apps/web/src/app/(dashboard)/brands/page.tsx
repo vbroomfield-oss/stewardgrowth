@@ -43,7 +43,7 @@ export default function BrandsPage() {
 
   const fetchBrands = async () => {
     try {
-      const response = await fetch('/api/brands')
+      const response = await fetch('/api/brands', { credentials: 'include' })
       const result = await response.json()
 
       if (!result.success) {

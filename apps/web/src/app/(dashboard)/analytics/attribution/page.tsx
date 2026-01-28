@@ -27,7 +27,7 @@ export default function AttributionPage() {
   useEffect(() => {
     async function fetchBrands() {
       try {
-        const res = await fetch('/api/brands')
+        const res = await fetch('/api/brands', { credentials: 'include' })
         if (res.ok) {
           const data = await res.json()
           setBrands(data.brands || [])

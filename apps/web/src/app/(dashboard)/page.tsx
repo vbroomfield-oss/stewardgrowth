@@ -64,7 +64,7 @@ export default function DashboardPage() {
     async function fetchDashboardData() {
       try {
         // Fetch brands
-        const brandsRes = await fetch('/api/brands')
+        const brandsRes = await fetch('/api/brands', { credentials: 'include' })
         if (!brandsRes.ok) throw new Error('Failed to load brands')
         const brandsData = await brandsRes.json()
 
