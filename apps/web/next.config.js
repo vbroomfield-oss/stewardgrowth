@@ -26,3 +26,4 @@ const nextConfig = {
 module.exports = nextConfig
 
 // Trigger rebuild
+// Force rebuild Tue Jan 27 21:10:16 EST 2026
