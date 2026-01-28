@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -12,25 +12,35 @@ import {
   BookOpen,
   Upload,
   Calendar,
-  DollarSign,
-  Tag,
   Link2,
   Save,
   Search,
   Loader2,
   CheckCircle,
+  AlertCircle,
 } from 'lucide-react'
+
+interface Brand {
+  id: string
+  name: string
+  slug: string
+}
 
 export default function NewBookPage() {
   const router = useRouter()
+  const [brands, setBrands] = useState<Brand[]>([])
+  const [loadingBrands, setLoadingBrands] = useState(true)
   const [isLoading, setIsLoading] = useState(false)
   const [isLookingUp, setIsLookingUp] = useState(false)
   const [lookupSuccess, setLookupSuccess] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [formData, setFormData] = useState({
+    brandId: '',
     title: '',
     subtitle: '',
     author: '',
     isbn: '',
+    asin: '',
     description: '',
     category: '',
     publishDate: '',
@@ -38,10 +48,30 @@ export default function NewBookPage() {
     amazonUrl: '',
     kindleUrl: '',
     audibleUrl: '',
-    coverUrl: '',
-    publisher: '',
-    pageCount: '',
+    barnesNobleUrl: '',
+    coverImage: '',
   })
+
+  useEffect(() => {
+    async function fetchBrands() {
+      try {
+        const res = await fetch('/api/brands', { credentials: 'include' })
+        if (res.ok) {
+          const data = await res.json()
+          const fetchedBrands = data.brands || []
+          setBrands(fetchedBrands)
+          if (fetchedBrands.length > 0) {
+            setFormData(prev => ({ ...prev, brandId: fetchedBrands[0].id }))
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load brands:', err)
+      } finally {
+        setLoadingBrands(false)
+      }
+    }
+    fetchBrands()
+  }, [])
 
   // ISBN Lookup using Open Library API
   const handleISBNLookup = async () => {
@@ -69,11 +99,8 @@ export default function NewBookPage() {
           subtitle: bookData.subtitle || prev.subtitle,
           author: bookData.authors?.[0]?.name || prev.author,
           description: bookData.notes || bookData.excerpts?.[0]?.text || prev.description,
-          publisher: bookData.publishers?.[0]?.name || prev.publisher,
           publishDate: bookData.publish_date || prev.publishDate,
-          pageCount: bookData.number_of_pages?.toString() || prev.pageCount,
-          coverUrl: bookData.cover?.large || bookData.cover?.medium || prev.coverUrl,
-          // Auto-generate Amazon URL
+          coverImage: bookData.cover?.large || bookData.cover?.medium || prev.coverImage,
           amazonUrl: `https://amazon.com/dp/${isbn}`,
         }))
         setLookupSuccess(true)
@@ -92,10 +119,8 @@ export default function NewBookPage() {
             subtitle: googleBook.subtitle || prev.subtitle,
             author: googleBook.authors?.join(', ') || prev.author,
             description: googleBook.description || prev.description,
-            publisher: googleBook.publisher || prev.publisher,
             publishDate: googleBook.publishedDate || prev.publishDate,
-            pageCount: googleBook.pageCount?.toString() || prev.pageCount,
-            coverUrl: googleBook.imageLinks?.thumbnail?.replace('http:', 'https:') || prev.coverUrl,
+            coverImage: googleBook.imageLinks?.thumbnail?.replace('http:', 'https:') || prev.coverImage,
             amazonUrl: `https://amazon.com/dp/${isbn}`,
           }))
           setLookupSuccess(true)
@@ -114,12 +139,87 @@ export default function NewBookPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
+    setError(null)
 
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1000))
+    try {
+      const res = await fetch('/api/books', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          brandId: formData.brandId,
+          title: formData.title,
+          subtitle: formData.subtitle || null,
+          author: formData.author,
+          isbn: formData.isbn || null,
+          asin: formData.asin || null,
+          description: formData.description || null,
+          category: formData.category || null,
+          publishDate: formData.publishDate || null,
+          price: formData.price || null,
+          amazonUrl: formData.amazonUrl || null,
+          kindleUrl: formData.kindleUrl || null,
+          audibleUrl: formData.audibleUrl || null,
+          barnesNobleUrl: formData.barnesNobleUrl || null,
+          coverImage: formData.coverImage || null,
+        }),
+      })
 
-    setIsLoading(false)
-    router.push('/books')
+      const data = await res.json()
+
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Failed to create book')
+      }
+
+      router.push('/books')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create book')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  if (loadingBrands) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    )
+  }
+
+  if (brands.length === 0) {
+    return (
+      <div className="space-y-6 max-w-4xl">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="icon" asChild>
+            <Link href="/books">
+              <ArrowLeft className="h-4 w-4" />
+            </Link>
+          </Button>
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Add New Book</h1>
+            <p className="text-muted-foreground">
+              Add a book to start tracking sales and running ad campaigns
+            </p>
+          </div>
+        </div>
+
+        <Card className="border-dashed">
+          <CardContent className="flex flex-col items-center justify-center py-16">
+            <div className="rounded-full bg-primary/10 p-4 mb-4">
+              <BookOpen className="h-8 w-8 text-primary" />
+            </div>
+            <h3 className="text-xl font-semibold mb-2">No Brands Configured</h3>
+            <p className="text-muted-foreground text-center max-w-md mb-6">
+              You need to create a brand first before adding books. Books are associated with brands for marketing purposes.
+            </p>
+            <Button asChild size="lg">
+              <Link href="/brands/new">Create a Brand First</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    )
   }
 
   return (
@@ -139,7 +239,36 @@ export default function NewBookPage() {
         </div>
       </div>
 
+      {error && (
+        <Card className="border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-900/20">
+          <CardContent className="p-4 flex items-center gap-3">
+            <AlertCircle className="h-5 w-5 text-red-600" />
+            <p className="text-red-800 dark:text-red-200">{error}</p>
+          </CardContent>
+        </Card>
+      )}
+
       <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Brand Selection */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Select Brand</CardTitle>
+            <CardDescription>Choose which brand this book belongs to</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <select
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              value={formData.brandId}
+              onChange={(e) => setFormData({ ...formData, brandId: e.target.value })}
+              required
+            >
+              {brands.map((brand) => (
+                <option key={brand.id} value={brand.id}>{brand.name}</option>
+              ))}
+            </select>
+          </CardContent>
+        </Card>
+
         {/* Basic Info */}
         <Card>
           <CardHeader>
@@ -207,6 +336,14 @@ export default function NewBookPage() {
                   Enter ISBN and click search to auto-fill book details
                 </p>
               </div>
+              <div>
+                <label className="text-sm font-medium mb-2 block">ASIN</label>
+                <Input
+                  placeholder="Amazon ASIN (e.g., B0XXXXXXXXX)"
+                  value={formData.asin}
+                  onChange={(e) => setFormData({ ...formData, asin: e.target.value })}
+                />
+              </div>
             </div>
             <div>
               <label className="text-sm font-medium mb-2 block">Description</label>
@@ -227,44 +364,30 @@ export default function NewBookPage() {
               <Upload className="h-5 w-5" />
               Book Cover
             </CardTitle>
-            <CardDescription>Upload your book cover for ad creatives</CardDescription>
+            <CardDescription>Add your book cover for ad creatives</CardDescription>
           </CardHeader>
           <CardContent>
-            {formData.coverUrl ? (
-              <div className="flex gap-6">
-                <div className="w-32">
-                  <img
-                    src={formData.coverUrl}
-                    alt="Book cover"
-                    className="w-full rounded-lg shadow-md"
-                  />
-                  <p className="text-xs text-green-600 mt-2 text-center">
-                    Cover loaded from ISBN
-                  </p>
-                </div>
-                <div className="flex-1 border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 text-center">
-                  <p className="text-sm text-muted-foreground mb-2">
-                    Upload a different cover image
-                  </p>
-                  <Button variant="outline" size="sm">
-                    Replace Cover
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-8 text-center">
-                <div className="mx-auto w-16 h-16 rounded-lg bg-muted flex items-center justify-center mb-4">
-                  <BookOpen className="h-8 w-8 text-muted-foreground" />
-                </div>
-                <p className="text-sm text-muted-foreground mb-2">
-                  Drag and drop your cover image, or click to browse
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Tip: Enter ISBN above to auto-load cover image
-                </p>
-                <Button variant="outline" className="mt-4">
-                  Upload Cover
-                </Button>
+            <div>
+              <label className="text-sm font-medium mb-2 block">Cover Image URL</label>
+              <Input
+                placeholder="https://example.com/cover.jpg"
+                value={formData.coverImage}
+                onChange={(e) => setFormData({ ...formData, coverImage: e.target.value })}
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Enter a URL to your book cover image, or it will be auto-filled from ISBN lookup
+              </p>
+            </div>
+            {formData.coverImage && (
+              <div className="mt-4">
+                <img
+                  src={formData.coverImage}
+                  alt="Book cover preview"
+                  className="w-32 rounded-lg shadow-md"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).style.display = 'none'
+                  }}
+                />
               </div>
             )}
           </CardContent>
@@ -356,6 +479,14 @@ export default function NewBookPage() {
                 onChange={(e) => setFormData({ ...formData, audibleUrl: e.target.value })}
               />
             </div>
+            <div>
+              <label className="text-sm font-medium mb-2 block">Barnes & Noble URL</label>
+              <Input
+                placeholder="https://barnesandnoble.com/..."
+                value={formData.barnesNobleUrl}
+                onChange={(e) => setFormData({ ...formData, barnesNobleUrl: e.target.value })}
+              />
+            </div>
           </CardContent>
         </Card>
 
@@ -364,9 +495,18 @@ export default function NewBookPage() {
           <Button variant="outline" asChild>
             <Link href="/books">Cancel</Link>
           </Button>
-          <Button type="submit" disabled={isLoading}>
-            <Save className="mr-2 h-4 w-4" />
-            {isLoading ? 'Saving...' : 'Save Book'}
+          <Button type="submit" disabled={isLoading || !formData.title || !formData.author || !formData.brandId}>
+            {isLoading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              <>
+                <Save className="mr-2 h-4 w-4" />
+                Save Book
+              </>
+            )}
           </Button>
         </div>
       </form>
