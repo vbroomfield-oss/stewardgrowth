@@ -24,12 +24,9 @@ import {
 interface Brand {
   name: string
   slug: string
-  trackingId: string | null
-  apiKey: string | null
   domain: string | null
-  counts: {
-    events: number
-  }
+  settings: any
+  eventsCount: number
 }
 
 export default function ConnectPage() {
@@ -57,7 +54,7 @@ export default function ConnectPage() {
         throw new Error(result.error || 'Failed to fetch brand')
       }
 
-      setBrand(result.data)
+      setBrand(result.brand)
     } catch (err: any) {
       setError(err.message)
     } finally {
@@ -77,7 +74,9 @@ export default function ConnectPage() {
   }
 
   const sendTestEvent = async () => {
-    if (!brand?.trackingId || !brand?.apiKey) return
+    const trackingId = brand?.settings?.tracking?.trackingId
+    const apiKey = brand?.settings?.tracking?.apiKey
+    if (!trackingId || !apiKey) return
 
     setTestEventLoading(true)
     try {
@@ -85,10 +84,10 @@ export default function ConnectPage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-api-key': brand.apiKey,
+          'x-api-key': apiKey,
         },
         body: JSON.stringify({
-          brandId: brand.trackingId,
+          brandId: trackingId,
           eventType: 'page_view',
           timestamp: new Date().toISOString(),
           visitorId: 'test_visitor',
@@ -136,11 +135,13 @@ export default function ConnectPage() {
 
   // Generate tracking snippet with the real API endpoint
   const apiEndpoint = typeof window !== 'undefined' ? window.location.origin : ''
+  const trackingId = brand.settings?.tracking?.trackingId || ''
+  const apiKey = brand.settings?.tracking?.apiKey || ''
   const trackingSnippet = `<!-- StewardGrowth Tracking for ${brand.name} -->
 <script>
 (function() {
-  var SG_TRACKING_ID = '${brand.trackingId}';
-  var SG_API_KEY = '${brand.apiKey}';
+  var SG_TRACKING_ID = '${trackingId}';
+  var SG_API_KEY = '${apiKey}';
   var SG_ENDPOINT = '${apiEndpoint}/api/events/ingest';
 
   // Get UTM parameters from URL
@@ -241,7 +242,7 @@ export default function ConnectPage() {
             </div>
             <div>
               <p className="font-medium">Tracking ID</p>
-              <p className="text-sm font-mono text-green-600">{brand.trackingId || 'Not set'}</p>
+              <p className="text-sm font-mono text-green-600">{brand.settings?.tracking?.trackingId || 'Not set'}</p>
             </div>
           </CardContent>
         </Card>
@@ -263,8 +264,8 @@ export default function ConnectPage() {
             </div>
             <div>
               <p className="font-medium">Events Received</p>
-              <p className={`text-sm ${brand.counts.events > 0 ? 'text-green-600' : 'text-yellow-600'}`}>
-                {brand.counts.events > 0 ? `${brand.counts.events.toLocaleString()} events` : 'Waiting for first event'}
+              <p className={`text-sm ${brand.eventsCount > 0 ? 'text-green-600' : 'text-yellow-600'}`}>
+                {brand.eventsCount > 0 ? `${brand.eventsCount.toLocaleString()} events` : 'Waiting for first event'}
               </p>
             </div>
           </CardContent>
@@ -407,12 +408,12 @@ sgTrack('lead_captured', { source: 'contact_form' });`}
                 <label className="text-sm font-medium mb-2 block">API Key</label>
                 <div className="flex gap-2">
                   <code className="flex-1 p-3 bg-muted rounded-lg font-mono text-sm break-all">
-                    {brand.apiKey || 'Not set'}
+                    {apiKey || 'Not set'}
                   </code>
-                  {brand.apiKey && (
+                  {apiKey && (
                     <Button
                       variant="outline"
-                      onClick={() => copyToClipboard(brand.apiKey!, 'api')}
+                      onClick={() => copyToClipboard(apiKey, 'api')}
                     >
                       {copiedApi ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                     </Button>
@@ -424,10 +425,10 @@ sgTrack('lead_captured', { source: 'contact_form' });`}
                 <h4 className="font-medium mb-2">Send Events via API</h4>
                 <pre className="p-4 bg-gray-900 text-gray-100 rounded-lg text-xs overflow-x-auto">
 {`curl -X POST ${apiEndpoint}/api/events/ingest \\
-  -H "x-api-key: ${brand.apiKey}" \\
+  -H "x-api-key: ${apiKey}" \\
   -H "Content-Type: application/json" \\
   -d '{
-    "brandId": "${brand.trackingId}",
+    "brandId": "${trackingId}",
     "eventType": "subscription_started",
     "timestamp": "2024-01-15T10:30:00Z",
     "properties": {
@@ -471,7 +472,7 @@ sgTrack('lead_captured', { source: 'contact_form' });`}
           <div className="flex items-center gap-4">
             <Button
               onClick={sendTestEvent}
-              disabled={testEventSent || testEventLoading || !brand.trackingId}
+              disabled={testEventSent || testEventLoading || !trackingId}
             >
               {testEventLoading ? (
                 <>

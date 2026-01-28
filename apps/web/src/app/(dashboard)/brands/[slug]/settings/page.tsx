@@ -34,8 +34,7 @@ interface Brand {
   description: string
   industry: string
   brandVoice: any
-  trackingId: string | null
-  apiKey: string | null
+  settings: any
 }
 
 export default function BrandSettingsPage() {
@@ -76,15 +75,15 @@ export default function BrandSettingsPage() {
         throw new Error(result.error || 'Failed to fetch brand')
       }
 
-      setBrand(result.data)
+      setBrand(result.brand)
       setFormData({
-        name: result.data.name || '',
-        domain: result.data.domain || '',
-        description: result.data.description || '',
-        color: result.data.color || '#6366f1',
-        timezone: result.data.settings?.timezone || 'America/New_York',
-        currency: result.data.settings?.currency || 'USD',
-        brandVoicePersonality: result.data.brandVoice?.personality || '',
+        name: result.brand.name || '',
+        domain: result.brand.domain || '',
+        description: result.brand.description || '',
+        color: result.brand.color || '#6366f1',
+        timezone: result.brand.settings?.timezone || 'America/New_York',
+        currency: result.brand.settings?.currency || 'USD',
+        brandVoicePersonality: result.brand.brandVoice?.personality || '',
       })
     } catch (err: any) {
       setError(err.message)
@@ -431,15 +430,15 @@ export default function BrandSettingsPage() {
                   </div>
                   <div className="flex items-center gap-2">
                     <Input
-                      value={brand.trackingId || 'Not set'}
+                      value={brand.settings?.tracking?.trackingId || 'Not set'}
                       readOnly
                       className="font-mono text-sm bg-muted"
                     />
-                    {brand.trackingId && (
+                    {brand.settings?.tracking?.trackingId && (
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => copyToClipboard(brand.trackingId!, 'id')}
+                        onClick={() => copyToClipboard(brand.settings.tracking.trackingId, 'id')}
                       >
                         {copiedId ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                       </Button>
@@ -456,15 +455,15 @@ export default function BrandSettingsPage() {
                   </div>
                   <div className="flex items-center gap-2">
                     <Input
-                      value={brand.apiKey || 'Not set'}
+                      value={brand.settings?.tracking?.apiKey || 'Not set'}
                       readOnly
                       className="font-mono text-sm bg-muted"
                     />
-                    {brand.apiKey && (
+                    {brand.settings?.tracking?.apiKey && (
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => copyToClipboard(brand.apiKey!, 'key')}
+                        onClick={() => copyToClipboard(brand.settings.tracking.apiKey, 'key')}
                       >
                         {copiedKey ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                       </Button>

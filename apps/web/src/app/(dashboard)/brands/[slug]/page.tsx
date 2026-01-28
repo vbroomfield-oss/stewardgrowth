@@ -37,21 +37,9 @@ interface Brand {
   goals: any
   budgetConstraints: any
   settings: any
-  trackingId: string | null
-  apiKey: string | null
-  metrics: {
-    mrr: number
-    leads: number
-    trials: number
-    adSpend: number
-    pageViews: number
-    visitors: number
-  }
-  counts: {
-    events: number
-    content: number
-    campaigns: number
-  }
+  eventsCount: number
+  contentCount: number
+  campaignsCount: number
 }
 
 export default function BrandDetailPage() {
@@ -76,7 +64,7 @@ export default function BrandDetailPage() {
         throw new Error(result.error || 'Failed to fetch brand')
       }
 
-      setBrand(result.data)
+      setBrand(result.brand)
     } catch (err: any) {
       setError(err.message)
     } finally {
@@ -173,29 +161,16 @@ export default function BrandDetailPage() {
       </div>
 
       {/* Key Metrics */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-6">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900/30">
-                <DollarSign className="h-5 w-5 text-green-600" />
+              <div className="p-2 rounded-lg bg-pink-100 dark:bg-pink-900/30">
+                <Target className="h-5 w-5 text-pink-600" />
               </div>
               <div>
-                <p className="text-2xl font-bold">${brand.metrics.mrr.toLocaleString()}</p>
-                <p className="text-xs text-muted-foreground">MRR</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
-                <Users className="h-5 w-5 text-blue-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{brand.metrics.leads.toLocaleString()}</p>
-                <p className="text-xs text-muted-foreground">Leads</p>
+                <p className="text-2xl font-bold">{brand.eventsCount.toLocaleString()}</p>
+                <p className="text-xs text-muted-foreground">Events Tracked</p>
               </div>
             </div>
           </CardContent>
@@ -204,11 +179,11 @@ export default function BrandDetailPage() {
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-lg bg-purple-100 dark:bg-purple-900/30">
-                <TrendingUp className="h-5 w-5 text-purple-600" />
+                <FileText className="h-5 w-5 text-purple-600" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{brand.metrics.trials}</p>
-                <p className="text-xs text-muted-foreground">Trials</p>
+                <p className="text-2xl font-bold">{brand.contentCount.toLocaleString()}</p>
+                <p className="text-xs text-muted-foreground">Content Posts</p>
               </div>
             </div>
           </CardContent>
@@ -220,8 +195,8 @@ export default function BrandDetailPage() {
                 <Megaphone className="h-5 w-5 text-orange-600" />
               </div>
               <div>
-                <p className="text-2xl font-bold">${brand.metrics.adSpend.toLocaleString()}</p>
-                <p className="text-xs text-muted-foreground">Ad Spend</p>
+                <p className="text-2xl font-bold">{brand.campaignsCount.toLocaleString()}</p>
+                <p className="text-xs text-muted-foreground">Ad Campaigns</p>
               </div>
             </div>
           </CardContent>
@@ -229,25 +204,14 @@ export default function BrandDetailPage() {
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-cyan-100 dark:bg-cyan-900/30">
-                <BarChart3 className="h-5 w-5 text-cyan-600" />
+              <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900/30">
+                <DollarSign className="h-5 w-5 text-green-600" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{brand.metrics.pageViews.toLocaleString()}</p>
-                <p className="text-xs text-muted-foreground">Page Views</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-pink-100 dark:bg-pink-900/30">
-                <Target className="h-5 w-5 text-pink-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{brand.counts.events.toLocaleString()}</p>
-                <p className="text-xs text-muted-foreground">Events Tracked</p>
+                <p className="text-2xl font-bold">
+                  ${(brand.budgetConstraints?.monthly || 0).toLocaleString()}
+                </p>
+                <p className="text-xs text-muted-foreground">Monthly Budget</p>
               </div>
             </div>
           </CardContent>
@@ -419,17 +383,17 @@ export default function BrandDetailPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              {brand.trackingId ? (
+              {brand.settings?.tracking?.trackingId ? (
                 <>
                   <div className="grid md:grid-cols-2 gap-4">
                     <div className="p-4 bg-muted rounded-lg">
                       <p className="text-sm text-muted-foreground">Tracking ID</p>
                       <div className="flex items-center gap-2 mt-1">
-                        <p className="text-xl font-mono font-bold">{brand.trackingId}</p>
+                        <p className="text-xl font-mono font-bold">{brand.settings.tracking.trackingId}</p>
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => copyToClipboard(brand.trackingId!)}
+                          onClick={() => copyToClipboard(brand.settings.tracking.trackingId)}
                         >
                           {copied ? <CheckCircle className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
                         </Button>
@@ -437,7 +401,7 @@ export default function BrandDetailPage() {
                     </div>
                     <div className="p-4 bg-muted rounded-lg">
                       <p className="text-sm text-muted-foreground">Events Received</p>
-                      <p className="text-xl font-bold mt-1">{brand.counts.events.toLocaleString()}</p>
+                      <p className="text-xl font-bold mt-1">{brand.eventsCount.toLocaleString()}</p>
                     </div>
                   </div>
 
@@ -449,10 +413,18 @@ export default function BrandDetailPage() {
                   </Button>
                 </>
               ) : (
-                <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
-                  <p className="text-sm text-yellow-700 dark:text-yellow-300">
-                    Tracking credentials are not set up for this brand. Please contact support.
-                  </p>
+                <div className="space-y-4">
+                  <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+                    <p className="text-sm text-yellow-700 dark:text-yellow-300">
+                      Tracking is not yet configured for this brand. Set up tracking in the connect page.
+                    </p>
+                  </div>
+                  <Button asChild>
+                    <Link href={`/brands/${brand.slug}/connect`}>
+                      <Code className="mr-2 h-4 w-4" />
+                      Set Up Tracking
+                    </Link>
+                  </Button>
                 </div>
               )}
             </CardContent>
