@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -18,6 +18,8 @@ import {
   Loader2,
   CheckCircle,
   AlertCircle,
+  X,
+  ImageIcon,
 } from 'lucide-react'
 
 interface Brand {
@@ -28,12 +30,15 @@ interface Brand {
 
 export default function NewBookPage() {
   const router = useRouter()
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const [brands, setBrands] = useState<Brand[]>([])
   const [loadingBrands, setLoadingBrands] = useState(true)
   const [isLoading, setIsLoading] = useState(false)
   const [isLookingUp, setIsLookingUp] = useState(false)
+  const [isUploading, setIsUploading] = useState(false)
   const [lookupSuccess, setLookupSuccess] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [coverPreview, setCoverPreview] = useState<string | null>(null)
   const [formData, setFormData] = useState({
     brandId: '',
     title: '',
@@ -73,6 +78,68 @@ export default function NewBookPage() {
     fetchBrands()
   }, [])
 
+  // Handle file upload
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    // Validate file type
+    if (!['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(file.type)) {
+      setError('Invalid file type. Please upload a JPEG, PNG, WebP, or GIF image.')
+      return
+    }
+
+    // Validate file size (5MB max)
+    if (file.size > 5 * 1024 * 1024) {
+      setError('File too large. Maximum size is 5MB.')
+      return
+    }
+
+    // Show preview immediately
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      setCoverPreview(e.target?.result as string)
+    }
+    reader.readAsDataURL(file)
+
+    // Upload file
+    setIsUploading(true)
+    setError(null)
+
+    try {
+      const uploadFormData = new FormData()
+      uploadFormData.append('file', file)
+      uploadFormData.append('type', 'book-cover')
+
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        credentials: 'include',
+        body: uploadFormData,
+      })
+
+      const data = await res.json()
+
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Failed to upload image')
+      }
+
+      setFormData(prev => ({ ...prev, coverImage: data.url }))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to upload image')
+      setCoverPreview(null)
+    } finally {
+      setIsUploading(false)
+    }
+  }
+
+  const removeCover = () => {
+    setFormData(prev => ({ ...prev, coverImage: '' }))
+    setCoverPreview(null)
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
+  }
+
   // ISBN Lookup using Open Library API
   const handleISBNLookup = async () => {
     const isbn = formData.isbn.replace(/[-\s]/g, '')
@@ -93,6 +160,7 @@ export default function NewBookPage() {
       const bookData = data[`ISBN:${isbn}`]
 
       if (bookData) {
+        const coverUrl = bookData.cover?.large || bookData.cover?.medium || ''
         setFormData((prev) => ({
           ...prev,
           title: bookData.title || prev.title,
@@ -100,9 +168,10 @@ export default function NewBookPage() {
           author: bookData.authors?.[0]?.name || prev.author,
           description: bookData.notes || bookData.excerpts?.[0]?.text || prev.description,
           publishDate: bookData.publish_date || prev.publishDate,
-          coverImage: bookData.cover?.large || bookData.cover?.medium || prev.coverImage,
+          coverImage: coverUrl || prev.coverImage,
           amazonUrl: `https://amazon.com/dp/${isbn}`,
         }))
+        if (coverUrl) setCoverPreview(coverUrl)
         setLookupSuccess(true)
       } else {
         // Try Google Books API as fallback
@@ -113,6 +182,7 @@ export default function NewBookPage() {
         const googleBook = googleData.items?.[0]?.volumeInfo
 
         if (googleBook) {
+          const coverUrl = googleBook.imageLinks?.thumbnail?.replace('http:', 'https:') || ''
           setFormData((prev) => ({
             ...prev,
             title: googleBook.title || prev.title,
@@ -120,9 +190,10 @@ export default function NewBookPage() {
             author: googleBook.authors?.join(', ') || prev.author,
             description: googleBook.description || prev.description,
             publishDate: googleBook.publishedDate || prev.publishDate,
-            coverImage: googleBook.imageLinks?.thumbnail?.replace('http:', 'https:') || prev.coverImage,
+            coverImage: coverUrl || prev.coverImage,
             amazonUrl: `https://amazon.com/dp/${isbn}`,
           }))
+          if (coverUrl) setCoverPreview(coverUrl)
           setLookupSuccess(true)
         } else {
           alert('Book not found. Please enter details manually.')
@@ -357,37 +428,73 @@ export default function NewBookPage() {
           </CardContent>
         </Card>
 
-        {/* Cover Image */}
+        {/* Cover Image Upload */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Upload className="h-5 w-5" />
               Book Cover
             </CardTitle>
-            <CardDescription>Add your book cover for ad creatives</CardDescription>
+            <CardDescription>Upload your book cover for ad creatives</CardDescription>
           </CardHeader>
           <CardContent>
-            <div>
-              <label className="text-sm font-medium mb-2 block">Cover Image URL</label>
-              <Input
-                placeholder="https://example.com/cover.jpg"
-                value={formData.coverImage}
-                onChange={(e) => setFormData({ ...formData, coverImage: e.target.value })}
-              />
-              <p className="text-xs text-muted-foreground mt-1">
-                Enter a URL to your book cover image, or it will be auto-filled from ISBN lookup
-              </p>
-            </div>
-            {formData.coverImage && (
-              <div className="mt-4">
-                <img
-                  src={formData.coverImage}
-                  alt="Book cover preview"
-                  className="w-32 rounded-lg shadow-md"
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).style.display = 'none'
-                  }}
-                />
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/gif"
+              onChange={handleFileUpload}
+              className="hidden"
+            />
+
+            {coverPreview || formData.coverImage ? (
+              <div className="flex items-start gap-6">
+                <div className="relative">
+                  <img
+                    src={coverPreview || formData.coverImage}
+                    alt="Book cover preview"
+                    className="w-32 h-48 object-cover rounded-lg shadow-md"
+                  />
+                  <button
+                    type="button"
+                    onClick={removeCover}
+                    className="absolute -top-2 -right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                  {isUploading && (
+                    <div className="absolute inset-0 bg-black/50 rounded-lg flex items-center justify-center">
+                      <Loader2 className="h-6 w-6 animate-spin text-white" />
+                    </div>
+                  )}
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm text-green-600 mb-2">Cover image uploaded</p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isUploading}
+                  >
+                    Replace Cover
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div
+                onClick={() => fileInputRef.current?.click()}
+                className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-8 text-center cursor-pointer hover:border-primary/50 hover:bg-primary/5 transition-colors"
+              >
+                <div className="mx-auto w-16 h-16 rounded-lg bg-muted flex items-center justify-center mb-4">
+                  <ImageIcon className="h-8 w-8 text-muted-foreground" />
+                </div>
+                <p className="font-medium mb-1">Click to upload book cover</p>
+                <p className="text-sm text-muted-foreground mb-2">
+                  or drag and drop your image here
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  JPEG, PNG, WebP, or GIF (max 5MB)
+                </p>
               </div>
             )}
           </CardContent>
@@ -495,7 +602,7 @@ export default function NewBookPage() {
           <Button variant="outline" asChild>
             <Link href="/books">Cancel</Link>
           </Button>
-          <Button type="submit" disabled={isLoading || !formData.title || !formData.author || !formData.brandId}>
+          <Button type="submit" disabled={isLoading || isUploading || !formData.title || !formData.author || !formData.brandId}>
             {isLoading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />

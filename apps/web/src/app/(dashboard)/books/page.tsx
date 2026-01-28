@@ -14,6 +14,7 @@ import {
   Megaphone,
   Calendar,
   Loader2,
+  ExternalLink,
 } from 'lucide-react'
 
 interface Brand {
@@ -22,25 +23,60 @@ interface Brand {
   slug: string
 }
 
+interface Book {
+  id: string
+  title: string
+  subtitle: string | null
+  author: string
+  coverImage: string | null
+  category: string | null
+  publishDate: string | null
+  price: number | null
+  amazonUrl: string | null
+  brand: {
+    id: string
+    name: string
+    slug: string
+  }
+  metrics: {
+    totalSales: number
+    totalRevenue: number
+    totalRoyalties: number
+    avgRating: number | null
+    reviewCount: number
+    campaignCount: number
+  }
+}
+
 export default function BooksPage() {
   const [brands, setBrands] = useState<Brand[]>([])
+  const [books, setBooks] = useState<Book[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    async function fetchBrands() {
+    async function fetchData() {
       try {
-        const res = await fetch('/api/brands', { credentials: 'include' })
-        if (res.ok) {
-          const data = await res.json()
+        const [brandsRes, booksRes] = await Promise.all([
+          fetch('/api/brands', { credentials: 'include' }),
+          fetch('/api/books', { credentials: 'include' }),
+        ])
+
+        if (brandsRes.ok) {
+          const data = await brandsRes.json()
           setBrands(data.brands || [])
         }
+
+        if (booksRes.ok) {
+          const data = await booksRes.json()
+          setBooks(data.books || [])
+        }
       } catch (err) {
-        console.error('Failed to load brands:', err)
+        console.error('Failed to load data:', err)
       } finally {
         setLoading(false)
       }
     }
-    fetchBrands()
+    fetchData()
   }, [])
 
   if (loading) {
@@ -93,7 +129,7 @@ export default function BooksPage() {
         </Card>
       ) : (
         <>
-          {/* Summary Stats - Empty */}
+          {/* Summary Stats */}
           <div className="grid gap-4 md:grid-cols-4">
             <Card>
               <CardContent className="p-4">
@@ -102,7 +138,7 @@ export default function BooksPage() {
                     <BookOpen className="h-5 w-5 text-amber-600" />
                   </div>
                   <div>
-                    <p className="text-2xl font-bold">0</p>
+                    <p className="text-2xl font-bold">{books.length}</p>
                     <p className="text-sm text-muted-foreground">Total Books</p>
                   </div>
                 </div>
@@ -115,7 +151,9 @@ export default function BooksPage() {
                     <DollarSign className="h-5 w-5 text-green-600" />
                   </div>
                   <div>
-                    <p className="text-2xl font-bold">$0</p>
+                    <p className="text-2xl font-bold">
+                      ${books.reduce((sum, b) => sum + b.metrics.totalRevenue, 0).toLocaleString()}
+                    </p>
                     <p className="text-sm text-muted-foreground">Total Revenue</p>
                   </div>
                 </div>
@@ -128,7 +166,9 @@ export default function BooksPage() {
                     <ShoppingCart className="h-5 w-5 text-blue-600" />
                   </div>
                   <div>
-                    <p className="text-2xl font-bold">0</p>
+                    <p className="text-2xl font-bold">
+                      {books.reduce((sum, b) => sum + b.metrics.totalSales, 0).toLocaleString()}
+                    </p>
                     <p className="text-sm text-muted-foreground">Total Sales</p>
                   </div>
                 </div>
@@ -141,7 +181,9 @@ export default function BooksPage() {
                     <Star className="h-5 w-5 text-yellow-600" />
                   </div>
                   <div>
-                    <p className="text-2xl font-bold">0</p>
+                    <p className="text-2xl font-bold">
+                      {books.reduce((sum, b) => sum + b.metrics.reviewCount, 0).toLocaleString()}
+                    </p>
                     <p className="text-sm text-muted-foreground">Total Reviews</p>
                   </div>
                 </div>
@@ -157,23 +199,78 @@ export default function BooksPage() {
               <TabsTrigger value="reviews">Reviews</TabsTrigger>
             </TabsList>
 
-            {/* Books Tab - Empty */}
+            {/* Books Tab */}
             <TabsContent value="books" className="space-y-6 mt-6">
-              <Card>
-                <CardContent className="py-12">
-                  <div className="text-center text-muted-foreground">
-                    <BookOpen className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                    <p>No books added yet</p>
-                    <p className="text-sm mt-1">Add your first book to start tracking sales and managing ads</p>
-                    <Button variant="outline" className="mt-4" asChild>
-                      <Link href="/books/new">
-                        <Plus className="mr-2 h-4 w-4" />
-                        Add Book
-                      </Link>
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
+              {books.length === 0 ? (
+                <Card>
+                  <CardContent className="py-12">
+                    <div className="text-center text-muted-foreground">
+                      <BookOpen className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                      <p>No books added yet</p>
+                      <p className="text-sm mt-1">Add your first book to start tracking sales and managing ads</p>
+                      <Button variant="outline" className="mt-4" asChild>
+                        <Link href="/books/new">
+                          <Plus className="mr-2 h-4 w-4" />
+                          Add Book
+                        </Link>
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                  {books.map((book) => (
+                    <Link key={book.id} href={`/books/${book.id}`}>
+                      <Card className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer h-full">
+                        <div className="flex">
+                          {book.coverImage ? (
+                            <img
+                              src={book.coverImage}
+                              alt={book.title}
+                              className="w-24 h-36 object-cover flex-shrink-0"
+                            />
+                          ) : (
+                            <div className="w-24 h-36 bg-muted flex items-center justify-center flex-shrink-0">
+                              <BookOpen className="h-8 w-8 text-muted-foreground" />
+                            </div>
+                          )}
+                          <CardContent className="p-4 flex flex-col flex-1">
+                            <h3 className="font-semibold line-clamp-2">{book.title}</h3>
+                            <p className="text-sm text-muted-foreground mb-2">{book.author}</p>
+                            <p className="text-xs text-muted-foreground mb-auto">
+                              {book.brand.name}
+                            </p>
+                            <div className="flex items-center gap-3 mt-3 text-xs">
+                              <span className="flex items-center gap-1">
+                                <ShoppingCart className="h-3 w-3" />
+                                {book.metrics.totalSales}
+                              </span>
+                              <span className="flex items-center gap-1">
+                                <DollarSign className="h-3 w-3" />
+                                ${book.metrics.totalRevenue.toLocaleString()}
+                              </span>
+                              {book.metrics.avgRating && (
+                                <span className="flex items-center gap-1">
+                                  <Star className="h-3 w-3 text-yellow-500" />
+                                  {book.metrics.avgRating.toFixed(1)}
+                                </span>
+                              )}
+                            </div>
+                            {book.amazonUrl && (
+                              <div className="mt-2">
+                                <span className="text-xs text-blue-600 flex items-center gap-1">
+                                  <ExternalLink className="h-3 w-3" />
+                                  Amazon
+                                </span>
+                              </div>
+                            )}
+                          </CardContent>
+                        </div>
+                      </Card>
+                    </Link>
+                  ))}
+                </div>
+              )}
             </TabsContent>
 
             {/* Campaigns Tab - Empty */}
