@@ -1,9 +1,15 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Sidebar } from '@/components/layout/sidebar'
 import { Header } from '@/components/layout/header'
 import { cn } from '@/lib/utils'
+
+interface User {
+  email: string
+  firstName: string
+  lastName: string
+}
 
 export default function DashboardLayout({
   children,
@@ -11,13 +17,28 @@ export default function DashboardLayout({
   children: React.ReactNode
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [user, setUser] = useState<User | null>(null)
 
-  // Mock user for now - will be replaced with actual auth
-  const mockUser = {
-    email: 'user@example.com',
-    firstName: 'John',
-    lastName: 'Doe',
-  }
+  useEffect(() => {
+    async function fetchUser() {
+      try {
+        const res = await fetch('/api/user', { credentials: 'include' })
+        if (res.ok) {
+          const data = await res.json()
+          if (data.user) {
+            setUser({
+              email: data.user.email,
+              firstName: data.user.firstName,
+              lastName: data.user.lastName,
+            })
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch user:', error)
+      }
+    }
+    fetchUser()
+  }, [])
 
   return (
     <div className="min-h-screen bg-background">
@@ -43,7 +64,7 @@ export default function DashboardLayout({
       <div className="lg:pl-64">
         <Header
           onMenuClick={() => setSidebarOpen(true)}
-          user={mockUser}
+          user={user || { email: '', firstName: '', lastName: '' }}
         />
         <main className="p-6">
           {children}
