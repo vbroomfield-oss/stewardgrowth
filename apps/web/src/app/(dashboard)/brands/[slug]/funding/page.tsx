@@ -1,78 +1,104 @@
+'use client'
+
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { FundingDashboard } from '@/components/brands/funding-dashboard'
-import { ArrowLeft, Settings } from 'lucide-react'
+import { ArrowLeft, Settings, Loader2 } from 'lucide-react'
 
-// Mock data
-const mockBrand = {
-  id: '1',
-  name: 'StewardMAX',
-  slug: 'stewardmax',
+interface Brand {
+  id: string
+  name: string
+  slug: string
+  budgetConstraints: {
+    monthly: number
+    dailyMax: number
+    platforms: {
+      google: number
+      meta: number
+      linkedin: number
+    }
+  }
 }
 
-const mockFunding = {
-  balance: 8500,
-  monthlyBudget: 10000,
-  spent: 6234,
-  reserved: 1200, // Pending ad spend
-  autoFundEnabled: true,
-  autoFundAmount: 5000,
-  autoFundThreshold: 2000,
-  lastFundedAt: '2024-01-15T10:00:00Z',
-  nextFundingDue: '2024-02-01T00:00:00Z',
-  status: 'funded' as const,
+interface Funding {
+  balance: number
+  monthlyBudget: number
+  spent: number
+  reserved: number
+  autoFundEnabled: boolean
+  autoFundAmount: number
+  autoFundThreshold: number
+  lastFundedAt: string | null
+  nextFundingDue: string | null
+  status: 'funded' | 'low' | 'empty'
 }
-
-const mockTransactions = [
-  {
-    id: '1',
-    type: 'spend' as const,
-    amount: 156.78,
-    description: 'Google Ads - Church Software Campaign',
-    platform: 'Google Ads',
-    timestamp: '2 hours ago',
-  },
-  {
-    id: '2',
-    type: 'spend' as const,
-    amount: 89.50,
-    description: 'Meta Ads - Lead Gen Campaign',
-    platform: 'Meta Ads',
-    timestamp: '5 hours ago',
-  },
-  {
-    id: '3',
-    type: 'reserved' as const,
-    amount: 500,
-    description: 'Reserved for pending campaign approval',
-    timestamp: '1 day ago',
-  },
-  {
-    id: '4',
-    type: 'deposit' as const,
-    amount: 5000,
-    description: 'Auto-fund deposit',
-    timestamp: '3 days ago',
-  },
-  {
-    id: '5',
-    type: 'spend' as const,
-    amount: 234.12,
-    description: 'LinkedIn Ads - Ministry Leaders',
-    platform: 'LinkedIn Ads',
-    timestamp: '4 days ago',
-  },
-  {
-    id: '6',
-    type: 'refund' as const,
-    amount: 45.00,
-    description: 'Refund - Invalid clicks detected',
-    platform: 'Google Ads',
-    timestamp: '5 days ago',
-  },
-]
 
 export default function BrandFundingPage({ params }: { params: { slug: string } }) {
+  const [brand, setBrand] = useState<Brand | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    async function fetchBrand() {
+      try {
+        const res = await fetch(`/api/brands/${params.slug}`, { credentials: 'include' })
+        if (!res.ok) throw new Error('Failed to load brand')
+        const data = await res.json()
+        setBrand(data.brand)
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load brand')
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchBrand()
+  }, [params.slug])
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    )
+  }
+
+  if (error || !brand) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px] text-center">
+        <p className="text-muted-foreground mb-4">{error || 'Brand not found'}</p>
+        <Button asChild>
+          <Link href="/brands">Back to Brands</Link>
+        </Button>
+      </div>
+    )
+  }
+
+  // Build funding data from brand's budget constraints
+  const monthlyBudget = brand.budgetConstraints?.monthly || 0
+  const funding: Funding = {
+    balance: monthlyBudget, // Start with full budget (no spending tracked yet)
+    monthlyBudget,
+    spent: 0, // TODO: Calculate from actual ad spend
+    reserved: 0, // TODO: Calculate from pending campaigns
+    autoFundEnabled: false,
+    autoFundAmount: Math.round(monthlyBudget / 2),
+    autoFundThreshold: Math.round(monthlyBudget * 0.2),
+    lastFundedAt: null,
+    nextFundingDue: null,
+    status: monthlyBudget > 0 ? 'funded' : 'empty',
+  }
+
+  // No transactions yet - will be populated when ad integrations are connected
+  const recentTransactions: Array<{
+    id: string
+    type: 'spend' | 'deposit' | 'refund' | 'reserved'
+    amount: number
+    description: string
+    platform?: string
+    timestamp: string
+  }> = []
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -86,7 +112,7 @@ export default function BrandFundingPage({ params }: { params: { slug: string } 
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Marketing Funds</h1>
             <p className="text-muted-foreground">
-              Manage marketing budget for {mockBrand.name}
+              Manage marketing budget for {brand.name}
             </p>
           </div>
         </div>
@@ -99,9 +125,9 @@ export default function BrandFundingPage({ params }: { params: { slug: string } 
       </div>
 
       <FundingDashboard
-        brand={mockBrand}
-        funding={mockFunding}
-        recentTransactions={mockTransactions}
+        brand={brand}
+        funding={funding}
+        recentTransactions={recentTransactions}
       />
     </div>
   )
