@@ -26,6 +26,8 @@ import {
   ListChecks,
   Zap,
   Send,
+  Mail,
+  ExternalLink,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useToast } from '@/components/ui/use-toast'
@@ -77,6 +79,7 @@ export default function NewBrandPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [isSaved, setIsSaved] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [installPlatform, setInstallPlatform] = useState<string>('wordpress')
   const [error, setError] = useState<string | null>(null)
   const [recommendedPlan, setRecommendedPlan] = useState<RecommendedPlan | null>(null)
 
@@ -1260,18 +1263,225 @@ export default function NewBrandPage() {
                     </pre>
                   </div>
 
-                  <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-                    <h4 className="font-medium text-blue-700 dark:text-blue-400 mb-2">Installation Instructions</h4>
-                    <ol className="text-sm text-blue-600 dark:text-blue-300 space-y-2 list-decimal list-inside">
-                      <li>Copy the tracking snippet above</li>
-                      <li>Paste it in the <code className="bg-blue-100 dark:bg-blue-900/50 px-1 rounded">&lt;head&gt;</code> section of your product</li>
-                      <li>Install on ALL domains: {formData.primaryDomain || 'your main domain'}{formData.appDomain && `, ${formData.appDomain}`}{formData.marketingSite && `, ${formData.marketingSite}`}</li>
-                      <li>Events will start flowing immediately</li>
-                    </ol>
+                  {/* Platform Selection */}
+                  <div>
+                    <h4 className="font-medium mb-3">Installation Instructions</h4>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Select your website platform for step-by-step instructions:
+                    </p>
+                    <div className="flex flex-wrap gap-2 mb-4">
+                      {[
+                        { id: 'wordpress', name: 'WordPress' },
+                        { id: 'squarespace', name: 'Squarespace' },
+                        { id: 'wix', name: 'Wix' },
+                        { id: 'webflow', name: 'Webflow' },
+                        { id: 'shopify', name: 'Shopify' },
+                        { id: 'gtm', name: 'Google Tag Manager' },
+                        { id: 'nextjs', name: 'Next.js / React' },
+                        { id: 'custom', name: 'Custom / Other' },
+                      ].map((platform) => (
+                        <button
+                          key={platform.id}
+                          onClick={() => setInstallPlatform(platform.id)}
+                          className={cn(
+                            'px-3 py-1.5 rounded-lg text-sm font-medium transition-colors',
+                            installPlatform === platform.id
+                              ? 'bg-primary text-primary-foreground'
+                              : 'bg-muted hover:bg-muted/80'
+                          )}
+                        >
+                          {platform.name}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Platform-specific instructions */}
+                    <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                      {installPlatform === 'wordpress' && (
+                        <div className="space-y-3">
+                          <h5 className="font-medium text-blue-700 dark:text-blue-400">WordPress Installation</h5>
+                          <ol className="text-sm text-blue-600 dark:text-blue-300 space-y-2 list-decimal list-inside">
+                            <li>Install the free <strong>"WPCode"</strong> plugin (or "Insert Headers and Footers")</li>
+                            <li>Go to <strong>Code Snippets → Header & Footer</strong></li>
+                            <li>Paste the tracking snippet in the <strong>"Header"</strong> section</li>
+                            <li>Click <strong>Save Changes</strong></li>
+                          </ol>
+                          <a
+                            href="https://wordpress.org/plugins/insert-headers-and-footers/"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center text-sm text-blue-700 dark:text-blue-400 hover:underline mt-2"
+                          >
+                            Get WPCode Plugin <ExternalLink className="ml-1 h-3 w-3" />
+                          </a>
+                        </div>
+                      )}
+
+                      {installPlatform === 'squarespace' && (
+                        <div className="space-y-3">
+                          <h5 className="font-medium text-blue-700 dark:text-blue-400">Squarespace Installation</h5>
+                          <ol className="text-sm text-blue-600 dark:text-blue-300 space-y-2 list-decimal list-inside">
+                            <li>Go to <strong>Settings → Advanced → Code Injection</strong></li>
+                            <li>Paste the tracking snippet in the <strong>"Header"</strong> field</li>
+                            <li>Click <strong>Save</strong></li>
+                          </ol>
+                          <p className="text-xs text-blue-500 mt-2">Note: Code Injection requires a Business plan or higher.</p>
+                        </div>
+                      )}
+
+                      {installPlatform === 'wix' && (
+                        <div className="space-y-3">
+                          <h5 className="font-medium text-blue-700 dark:text-blue-400">Wix Installation</h5>
+                          <ol className="text-sm text-blue-600 dark:text-blue-300 space-y-2 list-decimal list-inside">
+                            <li>Go to <strong>Settings → Custom Code</strong> (under Advanced)</li>
+                            <li>Click <strong>+ Add Custom Code</strong></li>
+                            <li>Paste the tracking snippet</li>
+                            <li>Set placement to <strong>"Head"</strong> and apply to <strong>"All pages"</strong></li>
+                            <li>Click <strong>Apply</strong></li>
+                          </ol>
+                          <p className="text-xs text-blue-500 mt-2">Note: Custom Code requires a Premium plan.</p>
+                        </div>
+                      )}
+
+                      {installPlatform === 'webflow' && (
+                        <div className="space-y-3">
+                          <h5 className="font-medium text-blue-700 dark:text-blue-400">Webflow Installation</h5>
+                          <ol className="text-sm text-blue-600 dark:text-blue-300 space-y-2 list-decimal list-inside">
+                            <li>Go to <strong>Project Settings → Custom Code</strong></li>
+                            <li>Paste the tracking snippet in the <strong>"Head Code"</strong> section</li>
+                            <li>Click <strong>Save Changes</strong></li>
+                            <li><strong>Publish</strong> your site for changes to take effect</li>
+                          </ol>
+                        </div>
+                      )}
+
+                      {installPlatform === 'shopify' && (
+                        <div className="space-y-3">
+                          <h5 className="font-medium text-blue-700 dark:text-blue-400">Shopify Installation</h5>
+                          <ol className="text-sm text-blue-600 dark:text-blue-300 space-y-2 list-decimal list-inside">
+                            <li>Go to <strong>Online Store → Themes</strong></li>
+                            <li>Click <strong>Actions → Edit code</strong></li>
+                            <li>Find and open <strong>theme.liquid</strong></li>
+                            <li>Paste the snippet just before the closing <code className="bg-blue-100 dark:bg-blue-900/50 px-1 rounded">&lt;/head&gt;</code> tag</li>
+                            <li>Click <strong>Save</strong></li>
+                          </ol>
+                        </div>
+                      )}
+
+                      {installPlatform === 'gtm' && (
+                        <div className="space-y-3">
+                          <h5 className="font-medium text-blue-700 dark:text-blue-400">Google Tag Manager Installation</h5>
+                          <ol className="text-sm text-blue-600 dark:text-blue-300 space-y-2 list-decimal list-inside">
+                            <li>Open your GTM container</li>
+                            <li>Click <strong>Tags → New</strong></li>
+                            <li>Name it "StewardGrowth Tracking"</li>
+                            <li>Tag type: <strong>Custom HTML</strong></li>
+                            <li>Paste the tracking snippet</li>
+                            <li>Trigger: <strong>All Pages</strong></li>
+                            <li>Click <strong>Save</strong> then <strong>Submit</strong> to publish</li>
+                          </ol>
+                          <a
+                            href="https://tagmanager.google.com/"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center text-sm text-blue-700 dark:text-blue-400 hover:underline mt-2"
+                          >
+                            Open Google Tag Manager <ExternalLink className="ml-1 h-3 w-3" />
+                          </a>
+                        </div>
+                      )}
+
+                      {installPlatform === 'nextjs' && (
+                        <div className="space-y-3">
+                          <h5 className="font-medium text-blue-700 dark:text-blue-400">Next.js / React Installation</h5>
+                          <p className="text-sm text-blue-600 dark:text-blue-300 mb-2">Add to your root layout or _document file:</p>
+                          <pre className="p-3 bg-gray-900 text-gray-100 rounded text-xs overflow-x-auto">
+{`// app/layout.tsx (App Router)
+import Script from 'next/script'
+
+export default function RootLayout({ children }) {
+  return (
+    <html>
+      <head>
+        <Script
+          id="stewardgrowth"
+          strategy="afterInteractive"
+          dangerouslySetInnerHTML={{
+            __html: \`/* Paste tracking code here */\`
+          }}
+        />
+      </head>
+      <body>{children}</body>
+    </html>
+  )
+}`}
+                          </pre>
+                        </div>
+                      )}
+
+                      {installPlatform === 'custom' && (
+                        <div className="space-y-3">
+                          <h5 className="font-medium text-blue-700 dark:text-blue-400">Custom Installation</h5>
+                          <ol className="text-sm text-blue-600 dark:text-blue-300 space-y-2 list-decimal list-inside">
+                            <li>Copy the tracking snippet above</li>
+                            <li>Paste it inside the <code className="bg-blue-100 dark:bg-blue-900/50 px-1 rounded">&lt;head&gt;</code> section of your HTML</li>
+                            <li>Add it to ALL pages on your site</li>
+                            <li>The snippet should load before your main content</li>
+                          </ol>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Email to developer */}
+                    <div className="mt-4 flex gap-3">
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          const subject = encodeURIComponent(`StewardGrowth Tracking Code for ${formData.name}`)
+                          const body = encodeURIComponent(`Hi,
+
+Please install the following tracking code on our website.
+
+TRACKING ID: ${formData.trackingId}
+
+INSTALLATION:
+Add this code to the <head> section of every page on these domains:
+${formData.primaryDomain ? `- ${formData.primaryDomain}` : ''}
+${formData.appDomain ? `- ${formData.appDomain}` : ''}
+${formData.marketingSite ? `- ${formData.marketingSite}` : ''}
+
+TRACKING CODE:
+${trackingSnippet}
+
+Thank you!`)
+                          window.open(`mailto:?subject=${subject}&body=${body}`)
+                        }}
+                      >
+                        <Mail className="mr-2 h-4 w-4" />
+                        Email to Developer
+                      </Button>
+                    </div>
                   </div>
 
+                  {/* Domains reminder */}
+                  <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+                    <h5 className="font-medium text-yellow-700 dark:text-yellow-400 mb-2">Install on ALL your domains</h5>
+                    <ul className="text-sm text-yellow-600 dark:text-yellow-300 space-y-1">
+                      {formData.primaryDomain && <li>✓ {formData.primaryDomain}</li>}
+                      {formData.appDomain && <li>✓ {formData.appDomain}</li>}
+                      {formData.marketingSite && <li>✓ {formData.marketingSite}</li>}
+                      {!formData.primaryDomain && !formData.appDomain && !formData.marketingSite && (
+                        <li>Add the snippet to all your website domains</li>
+                      )}
+                    </ul>
+                  </div>
+
+                  {/* Custom events section */}
                   <div className="pt-4">
-                    <h4 className="font-medium mb-2">Track Custom Events</h4>
+                    <h4 className="font-medium mb-2">Track Custom Events (Optional)</h4>
+                    <p className="text-sm text-muted-foreground mb-3">
+                      Add these to your code to track specific actions:
+                    </p>
                     <pre className="p-4 bg-gray-900 text-gray-100 rounded-lg text-xs overflow-x-auto">
 {`// Track a signup
 sgTrack('signup_completed', { plan: 'trial' });
