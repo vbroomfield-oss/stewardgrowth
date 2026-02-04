@@ -4,6 +4,7 @@ import {
   generateBlogPost,
   generateSocialPost,
   generateEmail,
+  generateSEOBlogPost,
   type BrandVoice,
 } from '@/lib/ai/openai'
 
@@ -18,7 +19,8 @@ function verifyCronRequest(request: NextRequest): boolean {
   return process.env.NODE_ENV === 'development'
 }
 
-const SOCIAL_PLATFORMS = ['twitter', 'linkedin', 'facebook', 'instagram'] as const
+// All supported social platforms including video
+const SOCIAL_PLATFORMS = ['twitter', 'linkedin', 'facebook', 'instagram', 'tiktok', 'threads', 'youtube', 'pinterest'] as const
 
 /**
  * GET /api/cron/generate-content
@@ -87,6 +89,9 @@ export async function GET(request: NextRequest) {
               brandVoice,
             })
 
+            // Video platforms get additional fields
+            const isVideoPlatform = platform === 'tiktok' || platform === 'youtube'
+
             await db.contentPost.create({
               data: {
                 brandId: brand.id,
@@ -103,6 +108,11 @@ export async function GET(request: NextRequest) {
                     content: result.content,
                     hashtags: result.hashtags,
                     mediaRecommendation: result.mediaRecommendation,
+                    ...(isVideoPlatform && {
+                      videoScript: result.videoScript,
+                      hook: result.hook,
+                      isVideo: true,
+                    }),
                   },
                 },
               },
@@ -115,13 +125,17 @@ export async function GET(request: NextRequest) {
         }
       }
 
-      // Generate 2 blog posts
+      // Generate 2 SEO-optimized blog posts
       for (let i = 0; i < 2; i++) {
         try {
           const topic = topics[i % topics.length]
-          const result = await generateBlogPost(topic, {
+          const targetKeyword = `${industry === 'church-management' ? 'church' : ''} ${topic}`.trim()
+
+          const result = await generateSEOBlogPost(topic, {
             brandName: brand.name,
             brandVoice,
+            targetKeyword,
+            secondaryKeywords: [brand.name.toLowerCase(), industry],
           })
 
           const scheduledDate = new Date()
@@ -143,8 +157,13 @@ export async function GET(request: NextRequest) {
                 blog: {
                   title: result.title,
                   content: result.content,
+                  metaTitle: result.metaTitle,
                   metaDescription: result.metaDescription,
+                  slug: result.slug,
                   suggestedTags: result.suggestedTags,
+                  seoScore: result.seoScore,
+                  readingTime: result.readingTime,
+                  wordCount: result.wordCount,
                 },
               },
             },

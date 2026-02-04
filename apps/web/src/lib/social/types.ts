@@ -1,6 +1,14 @@
 // Social Media Platform Types
 
-export type SocialPlatform = 'linkedin' | 'twitter' | 'facebook' | 'instagram'
+export type SocialPlatform =
+  | 'linkedin'
+  | 'twitter'
+  | 'facebook'
+  | 'instagram'
+  | 'tiktok'
+  | 'threads'
+  | 'youtube'
+  | 'pinterest'
 
 export interface SocialCredentials {
   accessToken: string

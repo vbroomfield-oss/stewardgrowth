@@ -102,12 +102,12 @@ function buildSystemPrompt(options: ContentGenerationOptions): string {
 }
 
 /**
- * Generate a blog post
+ * Generate a blog post with title and meta description
  */
 export async function generateBlogPost(
   topic: string,
   options: ContentGenerationOptions
-): Promise<GeneratedContent> {
+): Promise<GeneratedContent & { title: string; metaDescription: string; suggestedTags: string[] }> {
   const wordCount = {
     short: 500,
     medium: 1000,
@@ -127,7 +127,13 @@ Structure the post with:
 4. Actionable takeaways
 5. A conclusion with CTA
 
-Write in markdown format.`
+Format your response as JSON:
+{
+  "title": "Blog Post Title",
+  "content": "Full markdown content...",
+  "metaDescription": "SEO meta description (max 155 chars)",
+  "suggestedTags": ["tag1", "tag2", "tag3"]
+}`
 
   const response = await getOpenAI().chat.completions.create({
     model: 'gpt-4-turbo-preview',
@@ -137,12 +143,16 @@ Write in markdown format.`
     ],
     temperature: 0.7,
     max_tokens: 3000,
+    response_format: { type: 'json_object' },
   })
 
-  const content = response.choices[0].message.content || ''
+  const result = JSON.parse(response.choices[0].message.content || '{}')
 
   return {
-    content,
+    content: result.content,
+    title: result.title,
+    metaDescription: result.metaDescription,
+    suggestedTags: result.suggestedTags || [],
     tokens: {
       prompt: response.usage?.prompt_tokens || 0,
       completion: response.usage?.completion_tokens || 0,
@@ -155,27 +165,57 @@ Write in markdown format.`
  * Generate social media post
  */
 export async function generateSocialPost(
-  platform: 'twitter' | 'linkedin' | 'facebook' | 'instagram',
+  platform: 'twitter' | 'linkedin' | 'facebook' | 'instagram' | 'tiktok' | 'threads' | 'youtube' | 'pinterest',
   topic: string,
   options: ContentGenerationOptions
-): Promise<GeneratedContent> {
+): Promise<GeneratedContent & { videoScript?: string; hook?: string; mediaRecommendation?: string }> {
   const platformConfig = {
-    twitter: { maxLength: 280, name: 'Twitter/X', hashtagCount: 2 },
-    linkedin: { maxLength: 3000, name: 'LinkedIn', hashtagCount: 5 },
-    facebook: { maxLength: 500, name: 'Facebook', hashtagCount: 3 },
-    instagram: { maxLength: 2200, name: 'Instagram', hashtagCount: 10 },
+    twitter: { maxLength: 280, name: 'Twitter/X', hashtagCount: 2, isVideo: false },
+    linkedin: { maxLength: 3000, name: 'LinkedIn', hashtagCount: 5, isVideo: false },
+    facebook: { maxLength: 500, name: 'Facebook', hashtagCount: 3, isVideo: false },
+    instagram: { maxLength: 2200, name: 'Instagram', hashtagCount: 10, isVideo: false },
+    tiktok: { maxLength: 2200, name: 'TikTok', hashtagCount: 5, isVideo: true },
+    threads: { maxLength: 500, name: 'Threads', hashtagCount: 3, isVideo: false },
+    youtube: { maxLength: 5000, name: 'YouTube Shorts', hashtagCount: 3, isVideo: true },
+    pinterest: { maxLength: 500, name: 'Pinterest', hashtagCount: 10, isVideo: false },
   }
 
   const config = platformConfig[platform]
   const systemPrompt = buildSystemPrompt(options)
 
-  const userPrompt = `Write a ${config.name} post about: "${topic}"
+  // Different prompts for video vs text platforms
+  const userPrompt = config.isVideo
+    ? `Create a ${config.name} video concept about: "${topic}"
+
+Requirements:
+- Caption: Maximum ${config.maxLength} characters
+- Include ${config.hashtagCount} relevant hashtags
+- Create a compelling hook (first 3 seconds concept)
+- Write a 30-60 second video script
+${options.callToAction ? `- Call-to-action: ${options.callToAction}` : ''}
+
+The video should:
+- Start with a pattern interrupt or hook
+- Deliver value quickly
+- End with engagement prompt (follow, like, comment)
+
+Format your response as JSON:
+{
+  "mainPost": "caption text...",
+  "hook": "opening hook concept...",
+  "videoScript": "full script with timestamps...",
+  "alternates": ["alt caption 1", "alt caption 2"],
+  "hashtags": ["...", "..."],
+  "suggestedMedia": "visual/b-roll suggestions..."
+}`
+    : `Write a ${config.name} post about: "${topic}"
 
 Requirements:
 - Maximum ${config.maxLength} characters
 - Optimized for ${config.name} engagement
 - Include ${config.hashtagCount} relevant hashtags
 ${options.callToAction ? `- Call-to-action: ${options.callToAction}` : ''}
+${platform === 'pinterest' ? '- Include a compelling pin title and description optimized for Pinterest search' : ''}
 
 Also provide:
 1. Two alternative versions
@@ -207,6 +247,9 @@ Format your response as JSON:
     alternates: result.alternates,
     hashtags: result.hashtags,
     suggestedMedia: result.suggestedMedia,
+    videoScript: result.videoScript,
+    hook: result.hook,
+    mediaRecommendation: result.suggestedMedia,
     tokens: {
       prompt: response.usage?.prompt_tokens || 0,
       completion: response.usage?.completion_tokens || 0,
@@ -290,7 +333,14 @@ export async function generateEmail(
   type: 'newsletter' | 'promotional' | 'nurture' | 'announcement',
   topic: string,
   options: ContentGenerationOptions
-): Promise<GeneratedContent> {
+): Promise<{
+  subject: string
+  previewText: string
+  body: string
+  callToAction: { text: string; url: string }
+  alternateSubjects: string[]
+  tokens: { prompt: number; completion: number; total: number }
+}> {
   const systemPrompt = buildSystemPrompt(options)
 
   const userPrompt = `Write a ${type} email about: "${topic}"
@@ -304,11 +354,11 @@ ${options.callToAction ? `- Primary CTA: ${options.callToAction}` : ''}
 
 Format your response as JSON:
 {
-  "subjectLine": "...",
+  "subject": "...",
   "previewText": "...",
   "body": "...",
   "alternateSubjects": ["...", "..."],
-  "cta": {
+  "callToAction": {
     "text": "...",
     "url": "..."
   }
@@ -328,8 +378,11 @@ Format your response as JSON:
   const result = JSON.parse(response.choices[0].message.content || '{}')
 
   return {
-    content: JSON.stringify(result, null, 2),
-    alternates: result.alternateSubjects,
+    subject: result.subject,
+    previewText: result.previewText,
+    body: result.body,
+    callToAction: result.callToAction || { text: 'Learn More', url: '#' },
+    alternateSubjects: result.alternateSubjects || [],
     tokens: {
       prompt: response.usage?.prompt_tokens || 0,
       completion: response.usage?.completion_tokens || 0,
@@ -444,6 +497,190 @@ Format as JSON:
   })
 
   return JSON.parse(response.choices[0].message.content || '{"ideas": []}')
+}
+
+/**
+ * Generate SEO-optimized blog post with full metadata
+ */
+export async function generateSEOBlogPost(
+  topic: string,
+  options: ContentGenerationOptions & { targetKeyword: string; secondaryKeywords?: string[] }
+): Promise<{
+  title: string
+  content: string
+  metaDescription: string
+  metaTitle: string
+  slug: string
+  suggestedTags: string[]
+  seoScore: number
+  readingTime: number
+  wordCount: number
+  tokens: { prompt: number; completion: number; total: number }
+}> {
+  const systemPrompt = buildSystemPrompt(options)
+
+  const userPrompt = `Write an SEO-optimized blog post about: "${topic}"
+
+PRIMARY KEYWORD: ${options.targetKeyword}
+SECONDARY KEYWORDS: ${options.secondaryKeywords?.join(', ') || 'none'}
+
+SEO Requirements:
+1. Title: Include primary keyword, max 60 characters
+2. Meta description: Include keyword, max 155 characters, compelling CTA
+3. URL slug: Short, keyword-rich, lowercase with hyphens
+4. Content: 1500-2000 words, keyword density 1-2%
+5. Structure: H1 (title), multiple H2s and H3s
+6. Include internal linking suggestions
+7. Add FAQ section with schema-ready Q&As
+
+Content Structure:
+- Compelling introduction with keyword in first 100 words
+- Clear H2 sections addressing user intent
+- Bullet points and numbered lists for readability
+- Conclusion with call-to-action
+
+Format your response as JSON:
+{
+  "title": "...",
+  "metaTitle": "... | Brand Name",
+  "metaDescription": "...",
+  "slug": "keyword-rich-url-slug",
+  "content": "full markdown content...",
+  "suggestedTags": ["tag1", "tag2"],
+  "faqSchema": [{"question": "...", "answer": "..."}],
+  "internalLinkSuggestions": ["topic 1", "topic 2"],
+  "seoScore": 85,
+  "wordCount": 1800,
+  "readingTime": 7
+}`
+
+  const response = await getOpenAI().chat.completions.create({
+    model: 'gpt-4-turbo-preview',
+    messages: [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userPrompt },
+    ],
+    temperature: 0.7,
+    max_tokens: 4000,
+    response_format: { type: 'json_object' },
+  })
+
+  const result = JSON.parse(response.choices[0].message.content || '{}')
+
+  return {
+    title: result.title,
+    content: result.content,
+    metaDescription: result.metaDescription,
+    metaTitle: result.metaTitle,
+    slug: result.slug,
+    suggestedTags: result.suggestedTags || [],
+    seoScore: result.seoScore || 0,
+    readingTime: result.readingTime || 0,
+    wordCount: result.wordCount || 0,
+    tokens: {
+      prompt: response.usage?.prompt_tokens || 0,
+      completion: response.usage?.completion_tokens || 0,
+      total: response.usage?.total_tokens || 0,
+    },
+  }
+}
+
+/**
+ * Analyze content for SEO and provide recommendations
+ */
+export async function analyzeSEO(
+  content: string,
+  targetKeyword: string,
+  options: ContentGenerationOptions
+): Promise<{
+  score: number
+  issues: Array<{ severity: 'high' | 'medium' | 'low'; issue: string; fix: string }>
+  opportunities: string[]
+  keywordAnalysis: { density: number; placement: string[]; missing: string[] }
+}> {
+  const userPrompt = `Analyze this content for SEO optimization:
+
+TARGET KEYWORD: ${targetKeyword}
+
+CONTENT:
+---
+${content}
+---
+
+Provide a comprehensive SEO analysis including:
+1. Overall SEO score (0-100)
+2. Critical issues that need fixing
+3. Opportunities for improvement
+4. Keyword analysis (density, placement, missing variations)
+
+Format as JSON:
+{
+  "score": 75,
+  "issues": [
+    {"severity": "high", "issue": "Missing keyword in title", "fix": "Add primary keyword to H1"}
+  ],
+  "opportunities": ["Add FAQ section", "Include more internal links"],
+  "keywordAnalysis": {
+    "density": 1.5,
+    "placement": ["title", "first paragraph", "H2"],
+    "missing": ["meta description", "image alt"]
+  }
+}`
+
+  const response = await getOpenAI().chat.completions.create({
+    model: 'gpt-4-turbo-preview',
+    messages: [
+      { role: 'system', content: 'You are an SEO expert analyzing content for search optimization.' },
+      { role: 'user', content: userPrompt },
+    ],
+    temperature: 0.3,
+    max_tokens: 1000,
+    response_format: { type: 'json_object' },
+  })
+
+  return JSON.parse(response.choices[0].message.content || '{}')
+}
+
+/**
+ * Generate keyword research for a topic
+ */
+export async function generateKeywordResearch(
+  topic: string,
+  industry: string
+): Promise<{
+  primaryKeywords: Array<{ keyword: string; difficulty: string; intent: string }>
+  longTailKeywords: string[]
+  questions: string[]
+  relatedTopics: string[]
+}> {
+  const userPrompt = `Generate keyword research for: "${topic}" in the ${industry} industry.
+
+Provide:
+1. 10 primary keywords with difficulty (low/medium/high) and search intent (informational/transactional/navigational)
+2. 15 long-tail keyword variations
+3. 10 question-based keywords (People Also Ask style)
+4. 5 related topics for content clusters
+
+Format as JSON:
+{
+  "primaryKeywords": [{"keyword": "...", "difficulty": "medium", "intent": "informational"}],
+  "longTailKeywords": ["..."],
+  "questions": ["How to...", "What is..."],
+  "relatedTopics": ["..."]
+}`
+
+  const response = await getOpenAI().chat.completions.create({
+    model: 'gpt-4-turbo-preview',
+    messages: [
+      { role: 'system', content: 'You are an SEO keyword research specialist.' },
+      { role: 'user', content: userPrompt },
+    ],
+    temperature: 0.7,
+    max_tokens: 1500,
+    response_format: { type: 'json_object' },
+  })
+
+  return JSON.parse(response.choices[0].message.content || '{}')
 }
 
 export { getOpenAI }
