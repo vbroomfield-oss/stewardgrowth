@@ -7,9 +7,10 @@ import { getUserWithOrganization } from '@/lib/auth/get-user-org'
 // GET /api/brands/[slug] - Get a single brand by slug
 export async function GET(
   request: NextRequest,
-  { params }: { params: { slug: string } }
+  { params }: { params: Promise<{ slug: string }> }
 ) {
   try {
+    const { slug } = await params
     const userOrg = await getUserWithOrganization()
 
     if (!userOrg) {
@@ -22,7 +23,7 @@ export async function GET(
     const brand = await db.saaSBrand.findFirst({
       where: {
         organizationId: userOrg.organizationId,
-        slug: params.slug,
+        slug: slug,
         deletedAt: null,
       },
       select: {
@@ -79,9 +80,10 @@ export async function GET(
 // PATCH /api/brands/[slug] - Update a brand
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { slug: string } }
+  { params }: { params: Promise<{ slug: string }> }
 ) {
   try {
+    const { slug } = await params
     const userOrg = await getUserWithOrganization()
 
     if (!userOrg) {
@@ -96,7 +98,7 @@ export async function PATCH(
     const existingBrand = await db.saaSBrand.findFirst({
       where: {
         organizationId: userOrg.organizationId,
-        slug: params.slug,
+        slug: slug,
         deletedAt: null,
       },
     })
@@ -137,9 +139,10 @@ export async function PATCH(
 // DELETE /api/brands/[slug] - Soft delete a brand
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { slug: string } }
+  { params }: { params: Promise<{ slug: string }> }
 ) {
   try {
+    const { slug } = await params
     const userOrg = await getUserWithOrganization()
 
     if (!userOrg) {
@@ -152,7 +155,7 @@ export async function DELETE(
     const existingBrand = await db.saaSBrand.findFirst({
       where: {
         organizationId: userOrg.organizationId,
-        slug: params.slug,
+        slug: slug,
         deletedAt: null,
       },
     })

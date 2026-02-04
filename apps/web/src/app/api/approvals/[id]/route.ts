@@ -7,9 +7,10 @@ import { db } from '@/lib/db'
 // GET /api/approvals/[id] - Get single approval details
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const userWithOrg = await getUserWithOrganization()
 
     if (!userWithOrg) {
@@ -21,7 +22,7 @@ export async function GET(
 
     const approval = await db.approvalRequest.findFirst({
       where: {
-        id: params.id,
+        id: id,
         brand: { organizationId: userWithOrg.organizationId },
       },
       include: {
@@ -86,9 +87,10 @@ export async function GET(
 // PUT /api/approvals/[id] - Approve or reject
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id: approvalId } = await params
     const userWithOrg = await getUserWithOrganization()
 
     if (!userWithOrg) {
@@ -111,7 +113,7 @@ export async function PUT(
     // Find the approval
     const approval = await db.approvalRequest.findFirst({
       where: {
-        id: params.id,
+        id: approvalId,
         brand: { organizationId: userWithOrg.organizationId },
       },
     })
@@ -134,7 +136,7 @@ export async function PUT(
 
     // Update the approval request
     const updatedApproval = await db.approvalRequest.update({
-      where: { id: params.id },
+      where: { id: approvalId },
       data: {
         status: newStatus,
         reviewerId: userWithOrg.id,
@@ -174,7 +176,7 @@ export async function PUT(
         organizationId: userWithOrg.organizationId,
         action: `approval.${action}`,
         resource: 'ApprovalRequest',
-        resourceId: params.id,
+        resourceId: approvalId,
         changes: {
           before: { status: 'PENDING' },
           after: { status: newStatus, reviewNotes: notes },
