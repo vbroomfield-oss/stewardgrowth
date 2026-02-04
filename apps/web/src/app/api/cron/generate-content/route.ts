@@ -48,17 +48,30 @@ export async function GET(request: NextRequest) {
     const results: Array<{ brandId: string; brandName: string; contentCount: number }> = []
 
     for (const brand of brands) {
+      const settings = (brand.settings as any) || {}
+
+      // Extract brand info from settings
+      const description = settings.description || ''
+      const industry = settings.industry || 'technology'
+
+      // Build brand voice from description
       const brandVoice: BrandVoice = {
-        personality: (brand.brandVoice as any)?.personality || ['professional', 'helpful'],
-        doSay: (brand.brandVoice as any)?.doSay || [],
-        dontSay: (brand.brandVoice as any)?.dontSay || [],
-        valuePropositions: (brand.brandVoice as any)?.valuePropositions || [],
-        targetAudience: (brand.targetAudiences as string[])?.join(', ') || 'general audience',
-        industry: brand.industry || 'technology',
+        personality: ['professional', 'helpful', 'trustworthy'],
+        doSay: [],
+        dontSay: [],
+        valuePropositions: [],
+        targetAudience: industry === 'church-management'
+          ? 'Church administrators, pastors, ministry leaders'
+          : 'Professionals and organizations',
+        industry: industry,
       }
 
       let contentCount = 0
-      const topics = (brand.goals as string[]) || ['product features', 'customer success', 'industry insights']
+
+      // Generate topics based on industry and description
+      const topics = industry === 'church-management'
+        ? ['ministry coordination', 'team productivity', 'church operations', 'volunteer management', 'event planning', 'leadership tips', 'stewardship']
+        : ['professional development', 'leadership', 'productivity', 'growth strategies', 'best practices', 'industry insights', 'success stories']
 
       // Generate social posts for each platform (7 days)
       for (const platform of SOCIAL_PLATFORMS) {
