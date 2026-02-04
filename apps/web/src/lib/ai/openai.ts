@@ -185,28 +185,37 @@ export async function generateSocialPost(
 
   // Different prompts for video vs text platforms
   const userPrompt = config.isVideo
-    ? `Create a ${config.name} video concept about: "${topic}"
+    ? `Create a ${config.name} video for HeyGen AI avatar about: "${topic}"
 
 Requirements:
-- Caption: Maximum ${config.maxLength} characters
+- Caption: Maximum ${config.maxLength} characters for posting
 - Include ${config.hashtagCount} relevant hashtags
-- Create a compelling hook (first 3 seconds concept)
-- Write a 30-60 second video script
+- Write a 30-60 second script (75-150 words) ready to paste into HeyGen
 ${options.callToAction ? `- Call-to-action: ${options.callToAction}` : ''}
 
-The video should:
-- Start with a pattern interrupt or hook
-- Deliver value quickly
-- End with engagement prompt (follow, like, comment)
+Script structure for HeyGen:
+1. HOOK (0-3 sec): Attention-grabbing opening line
+2. PROBLEM/CONTEXT (3-15 sec): Why this matters
+3. VALUE/SOLUTION (15-45 sec): Main content, tips, or insights
+4. CTA (45-60 sec): Clear call-to-action (follow, comment, visit)
+
+The script should:
+- Be written in first person, conversational tone
+- Be ready to copy-paste directly into HeyGen
+- Include [PAUSE] markers where natural pauses should occur
+- Have clear sentence breaks for the AI avatar
 
 Format your response as JSON:
 {
-  "mainPost": "caption text...",
-  "hook": "opening hook concept...",
-  "videoScript": "full script with timestamps...",
+  "mainPost": "caption for posting with emojis...",
+  "hook": "The exact opening line (first sentence)...",
+  "videoScript": "Complete HeyGen-ready script with [PAUSE] markers...",
+  "estimatedDuration": "45 seconds",
+  "wordCount": 120,
   "alternates": ["alt caption 1", "alt caption 2"],
   "hashtags": ["...", "..."],
-  "suggestedMedia": "visual/b-roll suggestions..."
+  "suggestedBackground": "Suggested HeyGen background (office, studio, etc.)",
+  "suggestedAvatar": "Suggested avatar style (professional, casual, etc.)"
 }`
     : `Write a ${config.name} post about: "${topic}"
 
@@ -249,7 +258,11 @@ Format your response as JSON:
     suggestedMedia: result.suggestedMedia,
     videoScript: result.videoScript,
     hook: result.hook,
-    mediaRecommendation: result.suggestedMedia,
+    mediaRecommendation: result.suggestedMedia || result.suggestedBackground,
+    estimatedDuration: result.estimatedDuration,
+    wordCount: result.wordCount,
+    suggestedBackground: result.suggestedBackground,
+    suggestedAvatar: result.suggestedAvatar,
     tokens: {
       prompt: response.usage?.prompt_tokens || 0,
       completion: response.usage?.completion_tokens || 0,

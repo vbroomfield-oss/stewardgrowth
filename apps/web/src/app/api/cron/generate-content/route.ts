@@ -89,7 +89,7 @@ export async function GET(request: NextRequest) {
               brandVoice,
             })
 
-            // Video platforms get additional fields
+            // Video platforms get additional fields for HeyGen
             const isVideoPlatform = platform === 'tiktok' || platform === 'youtube'
 
             await db.contentPost.create({
@@ -109,9 +109,14 @@ export async function GET(request: NextRequest) {
                     hashtags: result.hashtags,
                     mediaRecommendation: result.mediaRecommendation,
                     ...(isVideoPlatform && {
+                      isVideo: true,
                       videoScript: result.videoScript,
                       hook: result.hook,
-                      isVideo: true,
+                      estimatedDuration: result.estimatedDuration,
+                      wordCount: result.wordCount,
+                      suggestedBackground: result.suggestedBackground,
+                      suggestedAvatar: result.suggestedAvatar,
+                      videoStatus: 'needs_creation', // User needs to create in HeyGen
                     }),
                   },
                 },
