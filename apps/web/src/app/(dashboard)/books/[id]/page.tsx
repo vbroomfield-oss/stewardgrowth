@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, use } from 'react'
 import Link from 'next/link'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -82,7 +82,8 @@ interface Book {
   }
 }
 
-export default function BookDetailPage({ params }: { params: { id: string } }) {
+export default function BookDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const resolvedParams = use(params)
   const [book, setBook] = useState<Book | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -90,7 +91,7 @@ export default function BookDetailPage({ params }: { params: { id: string } }) {
   useEffect(() => {
     async function fetchBook() {
       try {
-        const res = await fetch(`/api/books/${params.id}`, { credentials: 'include' })
+        const res = await fetch(`/api/books/${resolvedParams.id}`, { credentials: 'include' })
         if (!res.ok) throw new Error('Failed to load book')
         const data = await res.json()
         if (!data.success) throw new Error(data.error || 'Failed to load book')
@@ -102,7 +103,7 @@ export default function BookDetailPage({ params }: { params: { id: string } }) {
       }
     }
     fetchBook()
-  }, [params.id])
+  }, [resolvedParams.id])
 
   if (loading) {
     return (
@@ -173,9 +174,11 @@ export default function BookDetailPage({ params }: { params: { id: string } }) {
               </Link>
             </Button>
           )}
-          <Button variant="outline">
-            <Edit2 className="mr-2 h-4 w-4" />
-            Edit
+          <Button variant="outline" asChild>
+            <Link href={`/books/${resolvedParams.id}/edit`}>
+              <Edit2 className="mr-2 h-4 w-4" />
+              Edit
+            </Link>
           </Button>
         </div>
       </div>
