@@ -5,10 +5,16 @@ import { createClient } from '@supabase/supabase-js'
 import { getUserWithOrganization } from '@/lib/auth/get-user-org'
 
 // Create Supabase client with service role for storage operations
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
+// Note: File upload requires SUPABASE_SERVICE_ROLE_KEY to be set
+const getSupabase = () => {
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    return null
+  }
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY
+  )
+}
 
 const BUCKET_NAME = 'book-covers'
 const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB
@@ -16,6 +22,15 @@ const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
 
 export async function POST(request: NextRequest) {
   try {
+    const supabase = getSupabase()
+
+    if (!supabase) {
+      return NextResponse.json(
+        { success: false, error: 'File upload not configured. Please use the URL paste method instead - right-click your book cover on Amazon and select "Copy image address".' },
+        { status: 503 }
+      )
+    }
+
     const userOrg = await getUserWithOrganization()
 
     if (!userOrg) {

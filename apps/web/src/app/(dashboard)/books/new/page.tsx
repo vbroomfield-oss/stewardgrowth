@@ -435,7 +435,7 @@ export default function NewBookPage() {
               <Upload className="h-5 w-5" />
               Book Cover
             </CardTitle>
-            <CardDescription>Add your book cover image (paste URL or upload)</CardDescription>
+            <CardDescription>Add your book cover image (paste URL from Amazon - recommended)</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             {/* URL Input */}
@@ -462,7 +462,7 @@ export default function NewBookPage() {
                 )}
               </div>
               <p className="text-xs text-muted-foreground mt-1">
-                Tip: Right-click your book cover on Amazon and select "Copy image address"
+                Go to Amazon, right-click your book cover, and select "Copy image address" then paste here
               </p>
             </div>
 
