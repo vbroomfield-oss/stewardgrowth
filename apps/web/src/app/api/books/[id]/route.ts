@@ -7,9 +7,10 @@ import { getUserWithOrganization } from '@/lib/auth/get-user-org'
 // GET /api/books/[id] - Get a single book by ID
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id: bookId } = await params
     const userOrg = await getUserWithOrganization()
 
     if (!userOrg) {
@@ -32,7 +33,7 @@ export async function GET(
 
     const book = await db.book.findFirst({
       where: {
-        id: params.id,
+        id: bookId,
         brandId: { in: brandIds },
         deletedAt: null,
       },
@@ -170,9 +171,10 @@ export async function GET(
 // PATCH /api/books/[id] - Update a book
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id: bookId } = await params
     const userOrg = await getUserWithOrganization()
 
     if (!userOrg) {
@@ -197,7 +199,7 @@ export async function PATCH(
 
     const existingBook = await db.book.findFirst({
       where: {
-        id: params.id,
+        id: bookId,
         brandId: { in: brandIds },
         deletedAt: null,
       },
@@ -249,9 +251,10 @@ export async function PATCH(
 // DELETE /api/books/[id] - Soft delete a book
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id: bookId } = await params
     const userOrg = await getUserWithOrganization()
 
     if (!userOrg) {
@@ -274,7 +277,7 @@ export async function DELETE(
 
     const existingBook = await db.book.findFirst({
       where: {
-        id: params.id,
+        id: bookId,
         brandId: { in: brandIds },
         deletedAt: null,
       },
