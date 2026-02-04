@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
@@ -42,6 +42,26 @@ export function Header({ onMenuClick, user }: HeaderProps) {
   const router = useRouter()
   const { theme, setTheme } = useTheme()
   const [searchQuery, setSearchQuery] = useState('')
+  const [pendingCount, setPendingCount] = useState(0)
+
+  // Fetch pending approvals count
+  useEffect(() => {
+    async function fetchPendingCount() {
+      try {
+        const res = await fetch('/api/approvals?status=PENDING', { credentials: 'include' })
+        if (res.ok) {
+          const data = await res.json()
+          setPendingCount(data.data?.length || 0)
+        }
+      } catch (err) {
+        console.error('Failed to fetch pending count:', err)
+      }
+    }
+    fetchPendingCount()
+    // Refresh every 5 minutes
+    const interval = setInterval(fetchPendingCount, 5 * 60 * 1000)
+    return () => clearInterval(interval)
+  }, [])
 
   async function handleSignOut() {
     const supabase = createClient()
@@ -118,11 +138,17 @@ export function Header({ onMenuClick, user }: HeaderProps) {
             <span className="sr-only">Toggle theme</span>
           </Button>
 
-          {/* Notifications */}
-          <Button variant="ghost" size="icon" className="relative">
-            <Bell className="h-5 w-5" />
-            <span className="absolute top-1 right-1 w-2 h-2 bg-primary rounded-full" />
-          </Button>
+          {/* Notifications - Links to Approvals */}
+          <Link href="/approvals">
+            <Button variant="ghost" size="icon" className="relative">
+              <Bell className="h-5 w-5" />
+              {pendingCount > 0 && (
+                <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-primary text-primary-foreground text-xs font-medium rounded-full flex items-center justify-center px-1">
+                  {pendingCount > 99 ? '99+' : pendingCount}
+                </span>
+              )}
+            </Button>
+          </Link>
 
           {/* User Menu */}
           <DropdownMenu>
