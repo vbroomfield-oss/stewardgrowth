@@ -20,7 +20,7 @@ export const analyzePerformance = inngest.createFunction(
         where: { isActive: true },
         include: {
           kpiSnapshots: {
-            orderBy: { date: 'desc' },
+            orderBy: { createdAt: 'desc' },
             take: 30, // Last 30 snapshots
           },
           contentPosts: {
@@ -122,10 +122,9 @@ export const analyzePerformance = inngest.createFunction(
                 type: rec.type as any,
                 title: rec.title,
                 description: rec.description,
-                confidence: rec.confidence,
-                urgency: rec.priority,
-                status: 'PENDING',
-                data: {
+                confidenceScore: rec.confidence,
+                priority: rec.priority,
+                dataContext: {
                   engagementRate,
                   totalImpressions,
                   totalEngagement,
@@ -137,23 +136,22 @@ export const analyzePerformance = inngest.createFunction(
           }
 
           // Create KPI snapshot
+          const now = new Date()
+          const periodStart = new Date(now)
+          periodStart.setHours(0, 0, 0, 0)
+          const periodEnd = new Date(now)
+          periodEnd.setHours(23, 59, 59, 999)
+
           await db.kPISnapshot.create({
             data: {
               brandId: brand.id,
-              date: new Date(),
-              period: 'DAILY',
+              periodType: 'DAILY',
+              periodStart,
+              periodEnd,
               pageViews: totalImpressions,
-              uniqueVisitors: Math.floor(totalImpressions * 0.7), // Estimate
-              leads: 0, // Would come from event tracking
-              conversions: 0,
-              revenue: 0,
-              adSpend: 0,
-              organicTraffic: totalImpressions,
-              paidTraffic: 0,
-              socialTraffic: totalImpressions,
-              emailTraffic: 0,
-              directTraffic: 0,
-              referralTraffic: 0,
+              uniqueVisitors: Math.floor(totalImpressions * 0.7),
+              sessions: Math.floor(totalImpressions * 0.8),
+              leads: 0,
             },
           })
 

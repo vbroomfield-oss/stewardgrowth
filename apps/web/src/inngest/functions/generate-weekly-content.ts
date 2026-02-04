@@ -54,7 +54,7 @@ export const generateWeeklyContent = inngest.createFunction(
         dontSay: (brand.brandVoice as any)?.dontSay || [],
         valuePropositions: (brand.brandVoice as any)?.valuePropositions || [],
         targetAudience: (brand.targetAudiences as string[])?.join(', ') || 'general audience',
-        industry: brand.industry || 'technology',
+        industry: (brand.settings as any)?.industry || (brand.brandVoice as any)?.industry || 'technology',
       }
 
       let contentCount = 0

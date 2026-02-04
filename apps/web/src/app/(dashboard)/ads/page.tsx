@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Suspense } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
@@ -45,7 +45,7 @@ const PLATFORMS = [
   { id: 'instagram', name: 'Instagram', color: 'text-pink-600', enabled: false },
 ]
 
-export default function AdsPage() {
+function AdsPageContent() {
   const searchParams = useSearchParams()
   const [brands, setBrands] = useState<Brand[]>([])
   const [connections, setConnections] = useState<PlatformConnection[]>([])
@@ -330,5 +330,17 @@ export default function AdsPage() {
         </>
       )}
     </div>
+  )
+}
+
+export default function AdsPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    }>
+      <AdsPageContent />
+    </Suspense>
   )
 }

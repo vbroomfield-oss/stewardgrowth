@@ -71,7 +71,7 @@ Return JSON array: ["prompt1", "prompt2", ...]`,
         size: '1024x1792', // Vertical for social media
         quality: 'standard',
       })
-      if (image.data[0]?.url) {
+      if (image.data && image.data[0]?.url) {
         imageUrls.push(image.data[0].url)
       }
     } catch (error) {

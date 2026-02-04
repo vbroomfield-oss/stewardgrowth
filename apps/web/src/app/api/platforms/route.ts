@@ -123,7 +123,7 @@ export async function DELETE(request: NextRequest) {
         userId: userWithOrg.id,
         organizationId: userWithOrg.organizationId,
         action: 'platform.disconnected',
-        resourceType: 'AdPlatformConnection',
+        resource: 'AdPlatformConnection',
         resourceId: connectionId,
         changes: { platform: connection.platform },
       },

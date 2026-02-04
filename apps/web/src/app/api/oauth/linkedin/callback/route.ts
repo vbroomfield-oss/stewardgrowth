@@ -93,7 +93,7 @@ export async function GET(request: NextRequest) {
         userId: userWithOrg.id,
         organizationId: userWithOrg.organizationId,
         action: 'platform.connected',
-        resourceType: 'AdPlatformConnection',
+        resource: 'AdPlatformConnection',
         resourceId: stateData.brandId,
         changes: {
           platform: 'linkedin',

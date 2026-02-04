@@ -55,7 +55,7 @@ export async function GET(
         title: approval.title,
         description: approval.description,
         brandId: approval.brandId,
-        brandName: approval.brand.name,
+        brandName: approval.brand?.name || 'Unknown',
         resourceType: approval.resourceType,
         resourceId: approval.resourceId,
         resourceData,
@@ -173,7 +173,7 @@ export async function PUT(
         userId: userWithOrg.id,
         organizationId: userWithOrg.organizationId,
         action: `approval.${action}`,
-        resourceType: 'ApprovalRequest',
+        resource: 'ApprovalRequest',
         resourceId: params.id,
         changes: {
           before: { status: 'PENDING' },

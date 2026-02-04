@@ -168,7 +168,15 @@ export async function generateSocialPost(
   platform: 'twitter' | 'linkedin' | 'facebook' | 'instagram' | 'tiktok' | 'threads' | 'youtube' | 'pinterest',
   topic: string,
   options: ContentGenerationOptions
-): Promise<GeneratedContent & { videoScript?: string; hook?: string; mediaRecommendation?: string }> {
+): Promise<GeneratedContent & {
+  videoScript?: string
+  hook?: string
+  mediaRecommendation?: string
+  estimatedDuration?: string
+  wordCount?: number
+  suggestedBackground?: string
+  suggestedAvatar?: string
+}> {
   const platformConfig = {
     twitter: { maxLength: 280, name: 'Twitter/X', hashtagCount: 2, isVideo: false },
     linkedin: { maxLength: 3000, name: 'LinkedIn', hashtagCount: 5, isVideo: false },
