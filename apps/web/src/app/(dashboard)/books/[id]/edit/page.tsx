@@ -325,7 +325,66 @@ export default function EditBookPage({ params }: { params: Promise<{ id: string 
               Book Cover
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4">
+            {/* URL Input */}
+            <div>
+              <label className="text-sm font-medium mb-2 block">Cover Image URL</label>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="https://images-na.ssl-images-amazon.com/images/I/..."
+                  value={formData.coverImage}
+                  onChange={(e) => {
+                    setFormData({ ...formData, coverImage: e.target.value })
+                    setCoverPreview(e.target.value)
+                  }}
+                />
+                {formData.coverImage && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={removeCover}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Tip: Right-click your book cover on Amazon and select "Copy image address"
+              </p>
+            </div>
+
+            {/* Preview */}
+            {(coverPreview || formData.coverImage) && (
+              <div className="flex items-start gap-4 p-4 bg-muted/50 rounded-lg">
+                <img
+                  src={coverPreview || formData.coverImage}
+                  alt="Book cover preview"
+                  className="w-24 h-36 object-cover rounded-lg shadow-md"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).style.display = 'none'
+                  }}
+                />
+                <div>
+                  <p className="text-sm text-green-600 font-medium">Preview loaded</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    This image will be used for marketing materials
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Divider */}
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-card px-2 text-muted-foreground">Or upload from device</span>
+              </div>
+            </div>
+
+            {/* File Upload */}
             <input
               ref={fileInputRef}
               type="file"
@@ -333,50 +392,25 @@ export default function EditBookPage({ params }: { params: Promise<{ id: string 
               onChange={handleFileUpload}
               className="hidden"
             />
-
-            {coverPreview || formData.coverImage ? (
-              <div className="flex items-start gap-6">
-                <div className="relative">
-                  <img
-                    src={coverPreview || formData.coverImage}
-                    alt="Book cover preview"
-                    className="w-32 h-48 object-cover rounded-lg shadow-md"
-                  />
-                  <button
-                    type="button"
-                    onClick={removeCover}
-                    className="absolute -top-2 -right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                  {isUploading && (
-                    <div className="absolute inset-0 bg-black/50 rounded-lg flex items-center justify-center">
-                      <Loader2 className="h-6 w-6 animate-spin text-white" />
-                    </div>
-                  )}
-                </div>
-                <div className="flex-1">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={isUploading}
-                  >
-                    Replace Cover
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <div
-                onClick={() => fileInputRef.current?.click()}
-                className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-8 text-center cursor-pointer hover:border-primary/50 transition-colors"
-              >
-                <ImageIcon className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-                <p className="font-medium">Click to upload book cover</p>
-                <p className="text-sm text-muted-foreground">JPEG, PNG, WebP, or GIF (max 5MB)</p>
-              </div>
-            )}
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isUploading}
+            >
+              {isUploading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Uploading...
+                </>
+              ) : (
+                <>
+                  <ImageIcon className="mr-2 h-4 w-4" />
+                  Upload from Computer
+                </>
+              )}
+            </Button>
           </CardContent>
         </Card>
 
