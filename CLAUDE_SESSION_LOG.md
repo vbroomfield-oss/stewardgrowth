@@ -1,147 +1,236 @@
 # Claude Session Log - StewardGrowth
 
-## Last Updated: January 28, 2025
+## Last Updated: February 4, 2025
 
-## Current Status: READY FOR FRESH START
+## Current Status: AI MARKETING AUTOMATION IMPLEMENTED
 
 ### Summary
-All mock data removed. Database connection fixed. All existing users and organizations deleted from Prisma database. User needs to complete cleanup in Supabase Auth dashboard and create fresh account.
+Major implementation of autonomous AI marketing system. Inngest background jobs configured for weekly content generation, automated publishing, and performance analysis. Approvals workflow connected to real database. Social media OAuth integration built (LinkedIn active, others coming soon).
 
 ---
 
-## Database Cleanup (COMPLETE - January 28, 2025)
+## AI Marketing Automation (COMPLETE - February 4, 2025)
 
-Deleted all records from Prisma database to allow fresh start:
-- `AuditLog` - cleared
-- `ApprovalRequest` - cleared
-- `OrganizationMember` - cleared
-- `User` - cleared
-- `Organization` - cleared
+### Inngest Background Jobs Created
 
-**IMPORTANT**: Supabase Auth users are separate from Prisma database users. You must also delete users from Supabase Dashboard → Authentication → Users before signing up fresh.
+**Files Created:**
+- `/apps/web/src/inngest/client.ts` - Inngest client initialization
+- `/apps/web/src/inngest/functions/index.ts` - Function exports
+- `/apps/web/src/inngest/functions/generate-weekly-content.ts` - Weekly content generation (runs Sunday 6 AM)
+- `/apps/web/src/inngest/functions/publish-scheduled-content.ts` - Auto-publish approved content (runs every 15 min)
+- `/apps/web/src/inngest/functions/analyze-performance.ts` - Brand performance analysis (runs every 6 hours)
+- `/apps/web/src/app/api/inngest/route.ts` - Inngest webhook handler
+
+**Automation Schedule:**
+- Sunday 6 AM: Generate week's content (7 social posts/platform, 2 blogs, 1 newsletter per brand)
+- Every 15 min: Publish approved scheduled content
+- Every 6 hours: Analyze performance and generate recommendations
+
+### Content Pipeline Built
+
+**Files Created:**
+- `/apps/web/src/app/api/content/save/route.ts` - Save/list content with approval workflow
+
+**Content Flow:**
+1. AI generates content -> saved as AWAITING_APPROVAL
+2. User reviews in Approvals page
+3. Approve -> status becomes APPROVED, content scheduled
+4. Inngest job publishes at scheduled time
+
+### Approvals System Fixed
+
+**Files Modified:**
+- `/apps/web/src/app/api/approvals/route.ts` - Now queries real database
+- `/apps/web/src/app/api/approvals/[id]/route.ts` - Approve/reject with content status update
+- `/apps/web/src/app/(dashboard)/approvals/page.tsx` - Full UI with approve/reject buttons
+
+**Features:**
+- Real-time approval stats (pending, approved, rejected)
+- One-click approve/reject
+- Content preview in approval card
+- Audit logging for all actions
+
+### Email Integration (Resend)
+
+**Files Created:**
+- `/apps/web/src/lib/email/client.ts` - Resend email client with templates
+
+**Email Types:**
+- Approval notification (new content ready for review)
+- Weekly digest (performance summary + recommendations)
+
+**Dependency Added:**
+- `resend` package added to `/apps/web/package.json`
+
+### Social Media OAuth Integration
+
+**Files Created:**
+- `/apps/web/src/lib/social/types.ts` - TypeScript interfaces
+- `/apps/web/src/lib/social/linkedin-client.ts` - LinkedIn API client
+- `/apps/web/src/lib/social/publisher.ts` - Unified publishing interface
+- `/apps/web/src/app/api/oauth/linkedin/authorize/route.ts` - OAuth initiation
+- `/apps/web/src/app/api/oauth/linkedin/callback/route.ts` - OAuth callback
+- `/apps/web/src/app/api/platforms/route.ts` - Platform connections API
+
+**Platform Status:**
+- LinkedIn: ACTIVE - OAuth flow complete, posting works
+- Twitter: Coming soon
+- Facebook: Coming soon
+- Instagram: Coming soon
+
+### UI Updates
+
+**Files Modified:**
+- `/apps/web/src/app/(dashboard)/ads/page.tsx` - Platform connections UI with connect/disconnect
 
 ---
 
-## Work Completed Previous Session
+## User Setup Required
 
-### 1. Mock Data Removal (COMPLETE)
-Removed all hardcoded mock data from these pages:
-- `/analytics/attribution` - Removed mock channels and conversion paths
-- `/books` - Removed mock books, campaigns, launches, reviews
-- `/ai/plans` - Removed mock weekly plan with StewardMAX/StewardRing
-- `/reports` - Removed mock recent/scheduled reports
-- `/settings` - Removed mock org/team/integrations/API keys, now fetches real user data
+### Immediate (Required for Automation)
 
-### 2. New API Endpoint (COMPLETE)
-- Created `/api/user` endpoint to fetch current user info for Settings page
+1. **Sign up for Inngest** at https://inngest.com
+   - Create account (free tier)
+   - Get Event Key and Signing Key
+   - Add to Vercel:
+     ```
+     INNGEST_EVENT_KEY=xxx
+     INNGEST_SIGNING_KEY=yyy
+     ```
 
-### 3. Database Connection Fix (COMPLETE)
-**Problem:** `FATAL: Tenant or user not found` error on Vercel
+2. **Install dependencies**
+   ```bash
+   cd apps/web && npm install
+   ```
 
-**Root Cause:** Wrong DATABASE_URL format for Supabase pooler
+3. **Deploy to Vercel**
+   - Push changes to trigger new deployment
+   - Inngest will auto-discover the webhook at `/api/inngest`
 
-**Fix:** Updated Vercel environment variables:
-- `DATABASE_URL`: Changed from port 6543 (transaction mode) to port 5432 (session mode)
-  ```
-  postgresql://postgres.fjvotmtgxkwybehjrkef:VXdZ1x7UXB9JHlyK@aws-0-us-west-1.pooler.supabase.com:5432/postgres
-  ```
-- `DIRECT_URL`:
-  ```
-  postgresql://postgres:VXdZ1x7UXB9JHlyK@db.fjvotmtgxkwybehjrkef.supabase.co:5432/postgres
-  ```
+### For Email Notifications
 
-### 4. Prisma Client Generation (COMPLETE)
-- Added `postinstall` script to root `package.json` to run `prisma generate` during Vercel build
-- Added `prisma` as root dev dependency
+1. **Sign up for Resend** at https://resend.com
+   - Free tier: 3,000 emails/month
+   - Verify a domain or use their test domain
+   - Add to Vercel:
+     ```
+     RESEND_API_KEY=re_xxx
+     ```
 
-### 5. API Fetch Credentials (COMPLETE)
-- Added `credentials: 'include'` to all API fetch calls to ensure cookies are sent
+### For LinkedIn Publishing
+
+1. **Create LinkedIn App** at https://developer.linkedin.com
+   - Products: "Share on LinkedIn", "Sign In with LinkedIn using OpenID Connect"
+   - Redirect URI: `https://stewardgrowth.vercel.app/api/oauth/linkedin/callback`
+   - Add to Vercel:
+     ```
+     LINKEDIN_CLIENT_ID=xxx
+     LINKEDIN_CLIENT_SECRET=yyy
+     ```
 
 ---
 
-## Current Issue: Auth Cookies Not Working
+## How The System Works
 
-### Symptom
-API routes return `401 Unauthorized - no user session` on Vercel production
+### Weekly Workflow:
+1. **Sunday 6 AM**: AI generates week's content for all brands
+2. **Content appears** in Approvals page as "Pending"
+3. **You review**: Approve or reject each piece
+4. **Approved content**: Automatically scheduled
+5. **Every 15 min**: System publishes content that's due
+6. **Every 6 hours**: AI analyzes performance, creates recommendations
 
-### Logs Show
+### Per Brand Generated:
+- 28 social posts (7 days x 4 platforms)
+- 2 blog posts
+- 1 email newsletter
+- All with brand-specific voice and messaging
+
+---
+
+## Files Created This Session
+
 ```
-[API /api/brands] Unauthorized - no user session
+apps/web/src/inngest/
+  client.ts
+  functions/
+    index.ts
+    generate-weekly-content.ts
+    publish-scheduled-content.ts
+    analyze-performance.ts
+
+apps/web/src/app/api/
+  inngest/route.ts
+  content/save/route.ts
+  platforms/route.ts
+  oauth/linkedin/authorize/route.ts
+  oauth/linkedin/callback/route.ts
+
+apps/web/src/lib/
+  email/client.ts
+  social/
+    types.ts
+    linkedin-client.ts
+    publisher.ts
 ```
 
-### What This Means
-- Database connection is now working (no more "Tenant not found" errors)
-- Supabase auth cookies are not being passed from browser to API routes
-- User is logged in on client-side (can see dashboard UI) but server doesn't see session
+## Files Modified This Session
 
-### Files Involved
-- `apps/web/src/lib/supabase/server.ts` - Server-side Supabase client
-- `apps/web/src/lib/supabase/middleware.ts` - Session refresh middleware
-- `apps/web/src/lib/auth/get-user-org.ts` - Gets authenticated user + organization
-- `apps/web/src/middleware.ts` - Next.js middleware
-
-### Debug Logging Added
-Added console logs to `get-user-org.ts`:
-- Logs available cookies
-- Logs Supabase auth result
+```
+apps/web/package.json (added resend dependency)
+apps/web/src/app/api/approvals/route.ts
+apps/web/src/app/api/approvals/[id]/route.ts
+apps/web/src/app/(dashboard)/approvals/page.tsx
+apps/web/src/app/(dashboard)/ads/page.tsx
+```
 
 ---
 
-## Next Steps (User Action Required)
+## Environment Variables (Full List)
 
-1. **Delete Supabase Auth users**
-   - Go to: https://supabase.com/dashboard/project/fjvotmtgxkwybehjrkef/auth/users
-   - Delete all existing users (including "JD")
+```bash
+# Database (already set)
+DATABASE_URL=postgresql://...
+DIRECT_URL=postgresql://...
 
-2. **Create fresh account**
-   - Visit https://stewardgrowth.vercel.app
-   - Sign up with new credentials
-   - This will auto-create User and Organization records in Prisma
+# Auth (already set)
+NEXT_PUBLIC_SUPABASE_URL=https://fjvotmtgxkwybehjrkef.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=xxx
 
-3. **Test the app**
-   - After login, verify dashboard loads without errors
-   - Try adding a brand to confirm full flow works
-   - Check Vercel logs if any issues persist
+# AI (already set)
+OPENAI_API_KEY=sk-xxx
+ANTHROPIC_API_KEY=sk-ant-xxx
 
----
+# NEW - Background Jobs
+INNGEST_EVENT_KEY=
+INNGEST_SIGNING_KEY=
 
-## Environment Configuration
+# NEW - Email
+RESEND_API_KEY=
 
-### Vercel Environment Variables (confirmed set)
-- `NEXT_PUBLIC_SUPABASE_URL` - https://fjvotmtgxkwybehjrkef.supabase.co
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY` - (set)
-- `DATABASE_URL` - postgresql://postgres.fjvotmtgxkwybehjrkef:...@aws-0-us-west-1.pooler.supabase.com:5432/postgres
-- `DIRECT_URL` - postgresql://postgres:...@db.fjvotmtgxkwybehjrkef.supabase.co:5432/postgres
-- `OPENAI_API_KEY` - (set)
-- `ANTHROPIC_API_KEY` - (set)
-- `FOUNDER_CODE` - (set)
-
-### Supabase Configuration (confirmed)
-- Site URL: https://stewardgrowth.vercel.app/
-- Redirect URLs: https://stewardgrowth.vercel.app/
+# NEW - Social Media
+LINKEDIN_CLIENT_ID=
+LINKEDIN_CLIENT_SECRET=
+```
 
 ---
 
-## Recent Commits
-- `fabafce` - Fix: Add credentials include to all API fetch calls
-- `5447d66` - Force fresh build with new env vars
-- `1771a99` - Trigger redeploy for env var changes
-- `a39bc66` - Debug: Log available cookies in auth check
-- `60a9a4f` - Add debug logging to diagnose API failures
-- `d8dc7fe` - Fix: Add postinstall script for Prisma client generation on Vercel
-- `8f96dcb` - Remove remaining mock data from all dashboard pages
+## Previous Work (January 28, 2025)
+
+- Mock data removed from all pages
+- Database connection fixed (Supabase pooler)
+- API fetch credentials fixed
+- Prisma client generation on Vercel
+- Book marketing feature added
+- AI brand wizard with Claude
 
 ---
 
-## Key Files Modified
-- `apps/web/src/app/(dashboard)/page.tsx` - Dashboard
-- `apps/web/src/app/(dashboard)/brands/page.tsx` - All Brands
-- `apps/web/src/app/(dashboard)/analytics/attribution/page.tsx`
-- `apps/web/src/app/(dashboard)/analytics/events/page.tsx`
-- `apps/web/src/app/(dashboard)/books/page.tsx`
-- `apps/web/src/app/(dashboard)/ai/plans/page.tsx`
-- `apps/web/src/app/(dashboard)/reports/page.tsx`
-- `apps/web/src/app/(dashboard)/settings/page.tsx`
-- `apps/web/src/app/api/user/route.ts` (new)
-- `apps/web/src/lib/auth/get-user-org.ts`
-- `package.json` (root - added postinstall)
+## Next Steps (Optional Enhancements)
+
+1. Add Twitter/X integration
+2. Add Facebook/Instagram integration
+3. Add SEO automation (keyword tracking, content optimization)
+4. Add A/B testing for content
+5. Add real-time analytics dashboard
+6. Add Slack/Discord notifications
