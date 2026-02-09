@@ -18,10 +18,10 @@ function verifyCronRequest(request: NextRequest): boolean {
 }
 
 // All supported social platforms including video
-const ALL_PLATFORMS = ['twitter', 'linkedin', 'facebook', 'instagram', 'tiktok', 'threads', 'youtube', 'pinterest'] as const
+type SocialPlatform = 'twitter' | 'linkedin' | 'facebook' | 'instagram' | 'tiktok' | 'threads' | 'youtube' | 'pinterest'
 
 // Split platforms into 4 daily batches (2 platforms each) for smaller cron runs
-const BATCH_PLATFORMS: Record<string, readonly string[]> = {
+const BATCH_PLATFORMS: Record<string, SocialPlatform[]> = {
   '1': ['twitter', 'linkedin'],      // Monday
   '2': ['facebook', 'instagram'],    // Tuesday
   '3': ['tiktok', 'threads'],        // Wednesday
