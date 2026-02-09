@@ -508,7 +508,7 @@ export async function GET(request: NextRequest) {
               if (member.user.email) {
                 await sendApprovalNotification({
                   to: member.user.email,
-                  userName: member.user.name || 'there',
+                  userName: member.user.firstName || 'there',
                   pendingCount: orgContentCount,
                   approvalItems,
                 })
