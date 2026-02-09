@@ -294,9 +294,11 @@ export async function GET(request: NextRequest) {
           : ['professional development', 'leadership', 'productivity', 'growth strategies', 'best practices', 'industry insights', 'success stories']
 
         // Generate social posts (7 days)
+        console.log(`[Cron] Generating social posts for ${brand.name}...`)
         for (const platform of SOCIAL_PLATFORMS) {
           for (let day = 0; day < 7; day++) {
             try {
+              console.log(`[Cron] Generating ${platform} day ${day + 1}...`)
               const scheduledDate = new Date()
               scheduledDate.setDate(scheduledDate.getDate() + day + 1)
               scheduledDate.setHours(9, 0, 0, 0)
@@ -342,7 +344,7 @@ export async function GET(request: NextRequest) {
 
               contentCount++
             } catch (error) {
-              console.error(`Error generating ${platform} for ${brand.name}:`, error)
+              console.log(`[Cron] ERROR generating ${platform} for ${brand.name}:`, String(error))
             }
           }
         }
