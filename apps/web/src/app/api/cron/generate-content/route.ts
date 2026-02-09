@@ -40,7 +40,7 @@ function generateBookTopics(book: { title: string; description: string | null; c
 /**
  * GET /api/cron/generate-content
  *
- * Runs twice per week (Monday + Thursday at 6 AM UTC)
+ * Runs twice per week (Monday + Thursday at 6 AM EST / 11 AM UTC)
  * ?batch=1 (Monday): twitter, linkedin, facebook, instagram + blogs + email
  * ?batch=2 (Thursday): tiktok, threads, youtube, pinterest
  *
