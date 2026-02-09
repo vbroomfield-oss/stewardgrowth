@@ -6,6 +6,7 @@ import {
   generateSEOBlogPost,
   type BrandVoice,
 } from '@/lib/ai/openai'
+import { sendApprovalNotification } from '@/lib/email/client'
 
 // Verify this is a legitimate Vercel Cron request
 function verifyCronRequest(request: NextRequest): boolean {
@@ -468,6 +469,58 @@ export async function GET(request: NextRequest) {
 
     const totalContent = results.reduce((sum, r) => sum + r.contentCount, 0)
     console.log(`[Cron] Batch ${batch} content generation complete. Total: ${totalContent} pieces`)
+
+    // Send email notifications to organization admins
+    if (totalContent > 0) {
+      const orgIds = [...new Set(brands.map(b => b.organizationId))]
+
+      for (const orgId of orgIds) {
+        try {
+          // Find admins/owners to notify
+          const members = await db.organizationMember.findMany({
+            where: {
+              organizationId: orgId,
+              role: { in: ['OWNER', 'ADMIN'] },
+            },
+            include: { user: true },
+          })
+
+          // Get content items for this org
+          const orgResults = results.filter(r =>
+            brands.find(b => b.id === r.brandId)?.organizationId === orgId
+          )
+          const orgContentCount = orgResults.reduce((sum, r) => sum + r.contentCount, 0)
+
+          if (orgContentCount > 0 && members.length > 0) {
+            // Build approval items list
+            const approvalItems = orgResults
+              .filter(r => r.contentCount > 0)
+              .map(r => ({
+                title: r.bookTitle
+                  ? `${r.contentCount} items for "${r.bookTitle}"`
+                  : `${r.contentCount} items`,
+                brandName: r.brandName,
+                type: `Batch ${batch} - ${platforms.join(', ')}${includeBlogsAndEmail ? ', blogs, email' : ''}`,
+              }))
+
+            // Send to each admin
+            for (const member of members) {
+              if (member.user.email) {
+                await sendApprovalNotification({
+                  to: member.user.email,
+                  userName: member.user.name || 'there',
+                  pendingCount: orgContentCount,
+                  approvalItems,
+                })
+                console.log(`[Cron] Notification sent to ${member.user.email}`)
+              }
+            }
+          }
+        } catch (error) {
+          console.error(`[Cron] Error sending notification for org ${orgId}:`, error)
+        }
+      }
+    }
 
     return NextResponse.json({
       success: true,
