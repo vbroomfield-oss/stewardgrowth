@@ -19,7 +19,7 @@ import { db } from '@/lib/db'
  *   "platformVersions"?: { twitter: {...}, linkedin: {...} },
  *   "aiGenerated"?: true,
  *   "aiPrompt"?: "original prompt",
- *   "aiModel"?: "gpt-4-turbo"
+ *   "aiModel"?: "gpt-4o"
  * }
  */
 export async function POST(request: NextRequest) {

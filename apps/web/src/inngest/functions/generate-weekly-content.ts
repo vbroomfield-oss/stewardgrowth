@@ -88,7 +88,7 @@ export const generateWeeklyContent = inngest.createFunction(
                   scheduledFor: scheduledDate,
                   aiGenerated: true,
                   aiPrompt: topic,
-                  aiModel: 'gpt-4-turbo',
+                  aiModel: 'gpt-4o',
                   status: 'AWAITING_APPROVAL',
                   platformVersions: {
                     [platform]: {
@@ -136,7 +136,7 @@ export const generateWeeklyContent = inngest.createFunction(
                 scheduledFor: scheduledDate,
                 aiGenerated: true,
                 aiPrompt: topic,
-                aiModel: 'gpt-4-turbo',
+                aiModel: 'gpt-4o',
                 status: 'AWAITING_APPROVAL',
                 platformVersions: {
                   blog: {
@@ -182,7 +182,7 @@ export const generateWeeklyContent = inngest.createFunction(
               scheduledFor: scheduledDate,
               aiGenerated: true,
               aiPrompt: topic,
-              aiModel: 'gpt-4-turbo',
+              aiModel: 'gpt-4o',
               status: 'AWAITING_APPROVAL',
               platformVersions: {
                 email: {

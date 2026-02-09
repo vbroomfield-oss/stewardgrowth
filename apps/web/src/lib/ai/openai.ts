@@ -136,7 +136,7 @@ Format your response as JSON:
 }`
 
   const response = await getOpenAI().chat.completions.create({
-    model: 'gpt-4-turbo-preview',
+    model: 'gpt-4o',
     messages: [
       { role: 'system', content: systemPrompt },
       { role: 'user', content: userPrompt },
@@ -247,7 +247,7 @@ Format your response as JSON:
 }`
 
   const response = await getOpenAI().chat.completions.create({
-    model: 'gpt-4-turbo-preview',
+    model: 'gpt-4o',
     messages: [
       { role: 'system', content: systemPrompt },
       { role: 'user', content: userPrompt },
@@ -325,7 +325,7 @@ Generate multiple variations optimized for the ${objective} objective.
 Format your response as JSON with the appropriate fields for ${platform}.`
 
   const response = await getOpenAI().chat.completions.create({
-    model: 'gpt-4-turbo-preview',
+    model: 'gpt-4o',
     messages: [
       { role: 'system', content: systemPrompt },
       { role: 'user', content: userPrompt },
@@ -386,7 +386,7 @@ Format your response as JSON:
 }`
 
   const response = await getOpenAI().chat.completions.create({
-    model: 'gpt-4-turbo-preview',
+    model: 'gpt-4o',
     messages: [
       { role: 'system', content: systemPrompt },
       { role: 'user', content: userPrompt },
@@ -449,7 +449,7 @@ Format as JSON:
 }`
 
   const response = await getOpenAI().chat.completions.create({
-    model: 'gpt-4-turbo-preview',
+    model: 'gpt-4o',
     messages: [
       { role: 'system', content: systemPrompt },
       { role: 'user', content: userPrompt },
@@ -507,7 +507,7 @@ Format as JSON:
 }`
 
   const response = await getOpenAI().chat.completions.create({
-    model: 'gpt-4-turbo-preview',
+    model: 'gpt-4o',
     messages: [
       { role: 'system', content: systemPrompt },
       { role: 'user', content: userPrompt },
@@ -576,7 +576,7 @@ Format your response as JSON:
 }`
 
   const response = await getOpenAI().chat.completions.create({
-    model: 'gpt-4-turbo-preview',
+    model: 'gpt-4o',
     messages: [
       { role: 'system', content: systemPrompt },
       { role: 'user', content: userPrompt },
@@ -649,7 +649,7 @@ Format as JSON:
 }`
 
   const response = await getOpenAI().chat.completions.create({
-    model: 'gpt-4-turbo-preview',
+    model: 'gpt-4o',
     messages: [
       { role: 'system', content: 'You are an SEO expert analyzing content for search optimization.' },
       { role: 'user', content: userPrompt },
@@ -691,7 +691,7 @@ Format as JSON:
 }`
 
   const response = await getOpenAI().chat.completions.create({
-    model: 'gpt-4-turbo-preview',
+    model: 'gpt-4o',
     messages: [
       { role: 'system', content: 'You are an SEO keyword research specialist.' },
       { role: 'user', content: userPrompt },

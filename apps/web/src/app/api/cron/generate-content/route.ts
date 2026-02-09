@@ -139,7 +139,7 @@ export async function GET(request: NextRequest) {
                     scheduledFor: scheduledDate,
                     aiGenerated: true,
                     aiPrompt: `Book: ${book.title} | Topic: ${topic}`,
-                    aiModel: 'gpt-4-turbo',
+                    aiModel: 'gpt-4o',
                     status: 'AWAITING_APPROVAL',
                     platformVersions: {
                       [platform]: {
@@ -201,7 +201,7 @@ export async function GET(request: NextRequest) {
                   scheduledFor: scheduledDate,
                   aiGenerated: true,
                   aiPrompt: `Book: ${book.title} | Blog about: ${topic}`,
-                  aiModel: 'gpt-4-turbo',
+                  aiModel: 'gpt-4o',
                   status: 'AWAITING_APPROVAL',
                   platformVersions: {
                     blog: {
@@ -250,7 +250,7 @@ export async function GET(request: NextRequest) {
                 scheduledFor: scheduledDate,
                 aiGenerated: true,
                 aiPrompt: `Book promo: ${book.title}`,
-                aiModel: 'gpt-4-turbo',
+                aiModel: 'gpt-4o',
                 status: 'AWAITING_APPROVAL',
                 platformVersions: {
                   email: {
@@ -318,7 +318,7 @@ export async function GET(request: NextRequest) {
                   scheduledFor: scheduledDate,
                   aiGenerated: true,
                   aiPrompt: topic,
-                  aiModel: 'gpt-4-turbo',
+                  aiModel: 'gpt-4o',
                   status: 'AWAITING_APPROVAL',
                   platformVersions: {
                     [platform]: {
@@ -373,7 +373,7 @@ export async function GET(request: NextRequest) {
                 scheduledFor: scheduledDate,
                 aiGenerated: true,
                 aiPrompt: topic,
-                aiModel: 'gpt-4-turbo',
+                aiModel: 'gpt-4o',
                 status: 'AWAITING_APPROVAL',
                 platformVersions: {
                   blog: {
@@ -418,7 +418,7 @@ export async function GET(request: NextRequest) {
               scheduledFor: scheduledDate,
               aiGenerated: true,
               aiPrompt: topic,
-              aiModel: 'gpt-4-turbo',
+              aiModel: 'gpt-4o',
               status: 'AWAITING_APPROVAL',
               platformVersions: {
                 email: {
