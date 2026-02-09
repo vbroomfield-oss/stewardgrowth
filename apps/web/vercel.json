@@ -1,5 +1,10 @@
 {
   "framework": "nextjs",
+  "functions": {
+    "src/app/api/cron/**/*.ts": {
+      "maxDuration": 300
+    }
+  },
   "crons": [
     {
       "path": "/api/cron/generate-content?batch=1",
@@ -7,6 +12,14 @@
     },
     {
       "path": "/api/cron/generate-content?batch=2",
+      "schedule": "0 17 * * 2"
+    },
+    {
+      "path": "/api/cron/generate-content?batch=3",
+      "schedule": "0 17 * * 3"
+    },
+    {
+      "path": "/api/cron/generate-content?batch=4",
       "schedule": "0 17 * * 4"
     },
     {
