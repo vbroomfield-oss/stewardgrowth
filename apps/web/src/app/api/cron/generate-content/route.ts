@@ -17,7 +17,11 @@ function verifyCronRequest(request: NextRequest): boolean {
 }
 
 // All supported social platforms including video
-const SOCIAL_PLATFORMS = ['twitter', 'linkedin', 'facebook', 'instagram', 'tiktok', 'threads', 'youtube', 'pinterest'] as const
+const ALL_PLATFORMS = ['twitter', 'linkedin', 'facebook', 'instagram', 'tiktok', 'threads', 'youtube', 'pinterest'] as const
+
+// Split platforms into batches for smaller cron runs
+const BATCH_1_PLATFORMS = ['twitter', 'linkedin', 'facebook', 'instagram'] as const
+const BATCH_2_PLATFORMS = ['tiktok', 'threads', 'youtube', 'pinterest'] as const
 
 // Generate book-specific topics from description
 function generateBookTopics(book: { title: string; description: string | null; category: string | null }): string[] {
@@ -36,10 +40,11 @@ function generateBookTopics(book: { title: string; description: string | null; c
 /**
  * GET /api/cron/generate-content
  *
- * Runs every Sunday at 6 AM UTC (configured in vercel.json)
- * Generates a week's worth of content for:
- * - Each BOOK under each brand (separate content per book)
- * - Brands without books get general brand content
+ * Runs twice per week (Monday + Thursday at 6 AM UTC)
+ * ?batch=1 (Monday): twitter, linkedin, facebook, instagram + blogs + email
+ * ?batch=2 (Thursday): tiktok, threads, youtube, pinterest
+ *
+ * Each batch generates 3-4 days of content for smaller payloads
  */
 export async function GET(request: NextRequest) {
   if (!verifyCronRequest(request)) {
@@ -47,7 +52,14 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    console.log('[Cron] Starting weekly content generation...')
+    // Get batch from query params (1 = Mon-Wed platforms, 2 = Thu-Sun platforms)
+    const { searchParams } = new URL(request.url)
+    const batch = searchParams.get('batch') || '1'
+    const platforms = batch === '2' ? BATCH_2_PLATFORMS : BATCH_1_PLATFORMS
+    const daysToGenerate = batch === '2' ? 3 : 4 // Thu-Sun = 4 days, Mon-Wed = 3 days
+    const includeBlogsAndEmail = batch === '1' // Only generate blogs/email in batch 1
+
+    console.log(`[Cron] Starting batch ${batch} content generation (${platforms.join(', ')})...`)
 
     // Get all active brands WITH their books
     const brands = await db.saaSBrand.findMany({
@@ -111,9 +123,9 @@ export async function GET(request: NextRequest) {
             ],
           }
 
-          // Generate social posts for each platform (7 days per book)
-          for (const platform of SOCIAL_PLATFORMS) {
-            for (let day = 0; day < 7; day++) {
+          // Generate social posts for each platform (batch-specific days per book)
+          for (const platform of platforms) {
+            for (let day = 0; day < daysToGenerate; day++) {
               try {
                 const scheduledDate = new Date()
                 scheduledDate.setDate(scheduledDate.getDate() + day + 1)
@@ -171,7 +183,8 @@ export async function GET(request: NextRequest) {
             }
           }
 
-          // Generate 2 book-focused blog posts
+          // Generate blog posts only in batch 1
+          if (includeBlogsAndEmail) {
           for (let i = 0; i < 2; i++) {
             try {
               const blogTopics = [
@@ -271,6 +284,7 @@ export async function GET(request: NextRequest) {
           } catch (error) {
             console.error(`Error generating email for book "${book.title}":`, error)
           }
+          } // end includeBlogsAndEmail
 
           results.push({
             brandId: brand.id,
@@ -293,10 +307,10 @@ export async function GET(request: NextRequest) {
           ? ['ministry coordination', 'team productivity', 'church operations', 'volunteer management', 'event planning', 'leadership tips', 'stewardship']
           : ['professional development', 'leadership', 'productivity', 'growth strategies', 'best practices', 'industry insights', 'success stories']
 
-        // Generate social posts (7 days)
+        // Generate social posts (batch-specific days)
         console.log(`[Cron] Generating social posts for ${brand.name}...`)
-        for (const platform of SOCIAL_PLATFORMS) {
-          for (let day = 0; day < 7; day++) {
+        for (const platform of platforms) {
+          for (let day = 0; day < daysToGenerate; day++) {
             try {
               console.log(`[Cron] Generating ${platform} day ${day + 1}...`)
               const scheduledDate = new Date()
@@ -349,6 +363,8 @@ export async function GET(request: NextRequest) {
           }
         }
 
+        // Generate blog posts and email only in batch 1
+        if (includeBlogsAndEmail) {
         // Generate 2 blog posts
         for (let i = 0; i < 2; i++) {
           try {
@@ -438,6 +454,7 @@ export async function GET(request: NextRequest) {
         } catch (error) {
           console.error(`Error generating email for ${brand.name}:`, error)
         }
+        } // end includeBlogsAndEmail
 
         results.push({
           brandId: brand.id,
@@ -450,11 +467,13 @@ export async function GET(request: NextRequest) {
     }
 
     const totalContent = results.reduce((sum, r) => sum + r.contentCount, 0)
-    console.log(`[Cron] Weekly content generation complete. Total: ${totalContent} pieces`)
+    console.log(`[Cron] Batch ${batch} content generation complete. Total: ${totalContent} pieces`)
 
     return NextResponse.json({
       success: true,
-      message: 'Weekly content generated',
+      message: `Batch ${batch} content generated`,
+      batch,
+      platforms: Array.from(platforms),
       results,
       totalContent,
     })

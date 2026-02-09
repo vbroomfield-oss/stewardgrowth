@@ -2,8 +2,12 @@
   "framework": "nextjs",
   "crons": [
     {
-      "path": "/api/cron/generate-content",
-      "schedule": "0 6 * * 0"
+      "path": "/api/cron/generate-content?batch=1",
+      "schedule": "0 6 * * 1"
+    },
+    {
+      "path": "/api/cron/generate-content?batch=2",
+      "schedule": "0 6 * * 4"
     },
     {
       "path": "/api/cron/publish-content",
