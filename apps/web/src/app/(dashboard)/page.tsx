@@ -24,6 +24,8 @@ interface Brand {
   slug: string
   domain: string | null
   color: string
+  logo: string | null
+  settings: { logoUrl?: string } | null
   metrics: {
     mrr: number
     mrrChange: number
@@ -75,6 +77,8 @@ export default function DashboardPage() {
           slug: brand.slug,
           domain: brand.domain,
           color: brand.color || '#3b82f6',
+          logo: brand.logo || null,
+          settings: brand.settings || null,
           metrics: {
             mrr: brand.metrics?.mrr || 0,
             mrrChange: brand.metrics?.mrrChange || 0,
@@ -243,6 +247,8 @@ export default function DashboardPage() {
                     {data.brands.slice(0, 6).map((brand) => (
                       <BrandCard key={brand.id} brand={{
                         ...brand,
+                        logo: brand.logo || undefined,
+                        settings: brand.settings || undefined,
                         domain: brand.domain || undefined,
                       }} />
                     ))}

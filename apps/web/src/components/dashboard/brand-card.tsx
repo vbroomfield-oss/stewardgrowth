@@ -10,6 +10,7 @@ interface BrandCardProps {
     name: string
     slug: string
     logo?: string
+    settings?: { logoUrl?: string }
     domain?: string
     color?: string
     metrics: {
@@ -36,12 +37,29 @@ export function BrandCard({ brand }: BrandCardProps) {
         {/* Header */}
         <div className="flex items-start justify-between mb-4">
           <div className="flex items-center gap-3">
-            <div
-              className="w-10 h-10 rounded-lg flex items-center justify-center text-white font-bold text-sm shrink-0"
-              style={{ backgroundColor: brand.color || '#6366f1' }}
-            >
-              {brand.name[0]}
-            </div>
+            {(brand.logo || brand.settings?.logoUrl) ? (
+              <div className="w-10 h-10 rounded-lg border bg-white dark:bg-gray-900 flex items-center justify-center overflow-hidden shrink-0">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={brand.logo || brand.settings?.logoUrl}
+                  alt={`${brand.name} logo`}
+                  className="max-w-full max-h-full object-contain"
+                  onError={(e) => {
+                    const parent = (e.target as HTMLImageElement).parentElement
+                    if (parent) {
+                      parent.innerHTML = `<span class="font-bold text-white text-sm" style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;background:${brand.color || '#6366f1'}">${brand.name[0]}</span>`
+                    }
+                  }}
+                />
+              </div>
+            ) : (
+              <div
+                className="w-10 h-10 rounded-lg flex items-center justify-center text-white font-bold text-sm shrink-0"
+                style={{ backgroundColor: brand.color || '#6366f1' }}
+              >
+                {brand.name[0]}
+              </div>
+            )}
             <div>
               <h3 className="font-semibold">{brand.name}</h3>
               {brand.domain && (
