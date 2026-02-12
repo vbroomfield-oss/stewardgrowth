@@ -152,7 +152,7 @@ export default function BooksPage() {
                   </div>
                   <div>
                     <p className="text-2xl font-bold">
-                      ${books.reduce((sum, b) => sum + b.metrics.totalRevenue, 0).toLocaleString()}
+                      ${books.reduce((sum, b) => sum + (b.metrics?.totalRevenue || 0), 0).toLocaleString()}
                     </p>
                     <p className="text-sm text-muted-foreground">Total Revenue</p>
                   </div>
@@ -167,7 +167,7 @@ export default function BooksPage() {
                   </div>
                   <div>
                     <p className="text-2xl font-bold">
-                      {books.reduce((sum, b) => sum + b.metrics.totalSales, 0).toLocaleString()}
+                      {books.reduce((sum, b) => sum + (b.metrics?.totalSales || 0), 0).toLocaleString()}
                     </p>
                     <p className="text-sm text-muted-foreground">Total Sales</p>
                   </div>
@@ -182,7 +182,7 @@ export default function BooksPage() {
                   </div>
                   <div>
                     <p className="text-2xl font-bold">
-                      {books.reduce((sum, b) => sum + b.metrics.reviewCount, 0).toLocaleString()}
+                      {books.reduce((sum, b) => sum + (b.metrics?.reviewCount || 0), 0).toLocaleString()}
                     </p>
                     <p className="text-sm text-muted-foreground">Total Reviews</p>
                   </div>
@@ -243,13 +243,13 @@ export default function BooksPage() {
                             <div className="flex items-center gap-3 mt-3 text-xs">
                               <span className="flex items-center gap-1">
                                 <ShoppingCart className="h-3 w-3" />
-                                {book.metrics.totalSales}
+                                {book.metrics?.totalSales || 0}
                               </span>
                               <span className="flex items-center gap-1">
                                 <DollarSign className="h-3 w-3" />
-                                ${book.metrics.totalRevenue.toLocaleString()}
+                                ${(book.metrics?.totalRevenue || 0).toLocaleString()}
                               </span>
-                              {book.metrics.avgRating && (
+                              {book.metrics?.avgRating && (
                                 <span className="flex items-center gap-1">
                                   <Star className="h-3 w-3 text-yellow-500" />
                                   {book.metrics.avgRating.toFixed(1)}
