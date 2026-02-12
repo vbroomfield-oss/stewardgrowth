@@ -96,17 +96,60 @@ export async function POST(
     let bookCoverUrl: string | null = null
 
     // Check if the content is for a specific book
-    const bookId = proposedChanges.bookId
+    // Look for bookId in multiple places:
+    // 1. proposedChanges.bookId (top level)
+    // 2. proposedChanges.platformVersions[platform].bookId
+    // 3. contentPost.platformVersions[platform].bookId
+    let bookId = proposedChanges.bookId
+
+    // If not found at top level, check inside platformVersions
+    if (!bookId && proposedChanges.platformVersions && typeof proposedChanges.platformVersions === 'object') {
+      const pvs = proposedChanges.platformVersions as Record<string, any>
+      // Check the current platform first, then any platform
+      if (pvs[platform]?.bookId) {
+        bookId = pvs[platform].bookId
+      } else {
+        // Check any platform version for bookId
+        for (const pv of Object.values(pvs)) {
+          if (pv?.bookId) {
+            bookId = pv.bookId
+            break
+          }
+        }
+      }
+    }
+
+    // Also check contentPost.platformVersions as fallback
+    if (!bookId && contentPost?.platformVersions && typeof contentPost.platformVersions === 'object') {
+      const cpvs = contentPost.platformVersions as Record<string, any>
+      if (cpvs[platform]?.bookId) {
+        bookId = cpvs[platform].bookId
+      } else {
+        for (const pv of Object.values(cpvs)) {
+          if (pv?.bookId) {
+            bookId = pv.bookId
+            break
+          }
+        }
+      }
+    }
+
+    console.log('[Regenerate Image] Looking for bookId:', bookId, 'platform:', platform)
+
     if (bookId) {
       const book = approval.brand?.books?.find(b => b.id === bookId)
       if (book) {
+        console.log('[Regenerate Image] Found matching book:', book.title)
         bookContext = `This content is promoting the book "${book.title}" by ${book.author}.`
         if (book.coverImage) {
           bookCoverUrl = book.coverImage
         }
+      } else {
+        console.log('[Regenerate Image] Book not found in brand.books for id:', bookId)
       }
     } else if (approval.brand?.books && approval.brand.books.length > 0) {
-      // Use the first book's context if available
+      // Only fall back to first book if there's NO bookId at all
+      console.log('[Regenerate Image] No bookId found, falling back to first book')
       const book = approval.brand.books[0]
       bookContext = `This content is for a brand that publishes books like "${book.title}".`
       if (book.coverImage) {
