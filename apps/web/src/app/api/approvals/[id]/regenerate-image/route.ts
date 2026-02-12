@@ -89,9 +89,9 @@ export async function POST(
     const platforms = proposedChanges.platforms || contentPost?.platforms || []
     const platform = platforms[0] || 'instagram'
 
-    // Check if there's an associated book (for book cover context)
+    // Check if there's an associated book with a cover image
     let bookContext = ''
-    let bookCoverStyle = ''
+    let bookCoverUrl: string | null = null
 
     // Check if the content is for a specific book
     const bookId = proposedChanges.bookId
@@ -100,7 +100,7 @@ export async function POST(
       if (book) {
         bookContext = `This content is promoting the book "${book.title}" by ${book.author}.`
         if (book.coverImage) {
-          bookCoverStyle = `The image style should complement and reference the book cover design.`
+          bookCoverUrl = book.coverImage
         }
       }
     } else if (approval.brand?.books && approval.brand.books.length > 0) {
@@ -108,8 +108,80 @@ export async function POST(
       const book = approval.brand.books[0]
       bookContext = `This content is for a brand that publishes books like "${book.title}".`
       if (book.coverImage) {
-        bookCoverStyle = `Consider the brand's book cover aesthetic when generating the image.`
+        bookCoverUrl = book.coverImage
       }
+    }
+
+    // If we have a book cover, just use it directly - that's the best image for book marketing!
+    if (bookCoverUrl) {
+      console.log('[Regenerate Image] Using book cover image directly:', bookCoverUrl)
+
+      // Update the approval's proposedChanges with book cover
+      const updatedProposedChanges = {
+        ...proposedChanges,
+        imageUrl: bookCoverUrl,
+        imageRegeneratedAt: new Date().toISOString(),
+        imageSource: 'book_cover',
+      }
+
+      await db.approvalRequest.update({
+        where: { id: approvalId },
+        data: {
+          proposedChanges: updatedProposedChanges,
+        },
+      })
+
+      // Also update the content post if it exists
+      if (contentPost) {
+        const existingMedia = (contentPost.media || []) as Array<{ url: string; type: string }>
+        const updatedMedia = existingMedia.length > 0
+          ? existingMedia.map((m, i) => i === 0 ? { ...m, url: bookCoverUrl } : m)
+          : [{ url: bookCoverUrl, type: 'image' }]
+
+        const existingPlatformVersions = (contentPost.platformVersions || {}) as Record<string, any>
+        const updatedPlatformVersions: Record<string, any> = {}
+
+        for (const [p, version] of Object.entries(existingPlatformVersions)) {
+          updatedPlatformVersions[p] = {
+            ...version,
+            imageUrl: bookCoverUrl,
+          }
+        }
+
+        await db.contentPost.update({
+          where: { id: contentPost.id },
+          data: {
+            media: updatedMedia,
+            platformVersions: updatedPlatformVersions,
+          },
+        })
+      }
+
+      // Create audit log
+      await db.auditLog.create({
+        data: {
+          userId: userWithOrg.id,
+          organizationId: userWithOrg.organizationId,
+          action: 'approval.use_book_cover',
+          resource: 'ApprovalRequest',
+          resourceId: approvalId,
+          changes: {
+            before: { imageUrl: proposedChanges.imageUrl },
+            after: { imageUrl: bookCoverUrl, source: 'book_cover' },
+          },
+        },
+      })
+
+      return NextResponse.json({
+        success: true,
+        data: {
+          imageUrl: bookCoverUrl,
+          approvalId,
+          regeneratedAt: new Date().toISOString(),
+          source: 'book_cover',
+        },
+        message: 'Using book cover image - the best choice for book marketing!',
+      })
     }
 
     // Build brand-focused image prompt
@@ -133,7 +205,7 @@ export async function POST(
       threads: '1024x1024',
     }
 
-    // Build comprehensive prompt with brand context
+    // Build comprehensive prompt with brand context - NO TEXT, just scenic/mood imagery
     const imagePrompt = `Create a ${imageStyle} social media graphic for ${platform}.
 
 BRAND CONTEXT:
@@ -142,19 +214,24 @@ BRAND CONTEXT:
 - Brand Mood: ${mood}
 - Brand Tone: ${brandTone}
 ${bookContext}
-${bookCoverStyle}
 
 CONTENT THEME:
 ${content.substring(0, 300)}
 
 VISUAL REQUIREMENTS:
+- Create a beautiful scenic or abstract image that captures the mood and theme
 - Use colors that complement ${brandColor} as the primary brand color
 - Style: ${imageStyle}
 - Mood: ${mood}
-- Create a visually striking image that captures the essence of the content
-- The image should feel cohesive with the brand identity
+- Focus on landscapes, nature, abstract patterns, or lifestyle imagery
+- The image should evoke emotion and connect with the content theme
 
-IMPORTANT: Do NOT include any text, words, letters, or typography in the image. Create a purely visual graphic that conveys the mood and theme. Use imagery, colors, and visual elements only.`
+CRITICAL RULES - MUST FOLLOW:
+1. ABSOLUTELY NO TEXT, WORDS, LETTERS, NUMBERS, LOGOS, OR TYPOGRAPHY
+2. NO book covers, NO product mockups, NO design elements that look like printed materials
+3. Create a PURELY VISUAL, photographic or artistic image
+4. Think: beautiful background, nature scene, abstract art, or lifestyle moment
+5. The image will be used BEHIND text, so keep it clean and uncluttered`
 
     console.log('[Regenerate Image] Generating with prompt:', imagePrompt.substring(0, 200) + '...')
 

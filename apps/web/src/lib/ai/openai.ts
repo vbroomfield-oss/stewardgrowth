@@ -768,11 +768,16 @@ export async function generateSocialImage(
   }
 
   const prompt = `Create a ${styleGuide[options.style || 'professional']} social media graphic for ${options.platform}.
-${options.bookTitle ? `The image should relate to the book "${options.bookTitle}".` : ''}
+${options.bookTitle ? `The image should capture the mood and theme of "${options.bookTitle}" - think scenic landscapes, abstract art, or inspiring visuals.` : ''}
 Brand: ${options.brandName}
 Content theme: ${content.substring(0, 200)}
 
-IMPORTANT: Do NOT include any text, words, letters, or typography in the image. Create a purely visual graphic that conveys the mood and theme. Use imagery, colors, and visual elements only.`
+CRITICAL REQUIREMENTS:
+1. ABSOLUTELY NO TEXT, WORDS, LETTERS, NUMBERS, LOGOS, OR TYPOGRAPHY - not even stylized
+2. NO book covers, product mockups, or design mockups
+3. Create a PURELY VISUAL image - think photography, nature, abstract art, or lifestyle scenes
+4. Focus on capturing mood and emotion through imagery alone
+5. This will be used as a background, so keep it clean and uncluttered`
 
   return generateImage(prompt, {
     size: platformSizes[options.platform] || '1024x1024',

@@ -156,19 +156,26 @@ export async function GET(request: NextRequest) {
 
                 const isVideoPlatform = platform === 'tiktok' || platform === 'youtube'
 
-                // Generate image for non-video platforms
+                // For non-video platforms: Use book cover if available, otherwise generate mood image
                 let imageUrl: string | undefined
                 if (!isVideoPlatform) {
-                  const imageResult = await generateSocialImage(result.content, {
-                    platform,
-                    brandName: brand.name,
-                    bookTitle: book.title,
-                    style: 'professional',
-                  })
-                  if ('url' in imageResult) {
-                    imageUrl = imageResult.url
+                  if (book.coverImage) {
+                    // USE THE BOOK COVER DIRECTLY - best for book marketing!
+                    imageUrl = book.coverImage
+                    console.log(`[Cron] Using book cover image for ${platform}: ${book.title}`)
                   } else {
-                    console.log(`[Cron] Image generation failed for ${platform}: ${imageResult.error}`)
+                    // No book cover - generate a simple mood/scenic image (NO TEXT)
+                    const imageResult = await generateSocialImage(result.content, {
+                      platform,
+                      brandName: brand.name,
+                      bookTitle: book.title,
+                      style: 'professional',
+                    })
+                    if ('url' in imageResult) {
+                      imageUrl = imageResult.url
+                    } else {
+                      console.log(`[Cron] Image generation failed for ${platform}: ${imageResult.error}`)
+                    }
                   }
                 }
 
