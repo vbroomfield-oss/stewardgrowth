@@ -25,6 +25,8 @@ import {
   Smartphone,
   ChevronDown,
   ChevronUp,
+  RefreshCw,
+  ImageIcon,
 } from 'lucide-react'
 import { PlatformPreview, getPlatformColor, getPlatformIcon } from '@/components/social/platform-preview'
 
@@ -69,6 +71,7 @@ export default function ApprovalsPage() {
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [previewId, setPreviewId] = useState<string | null>(null)
   const [selectedPlatform, setSelectedPlatform] = useState<string>('twitter')
+  const [regeneratingId, setRegeneratingId] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -168,6 +171,32 @@ export default function ApprovalsPage() {
       alert('Failed to upload video')
     } finally {
       setUploadingId(null)
+    }
+  }
+
+  async function handleRegenerateImage(approvalId: string) {
+    try {
+      setRegeneratingId(approvalId)
+      const res = await fetch(`/api/approvals/${approvalId}/regenerate-image`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+      })
+
+      if (res.ok) {
+        const data = await res.json()
+        // Refresh data to show new image
+        await fetchData()
+        alert('Image regenerated successfully with brand context!')
+      } else {
+        const data = await res.json()
+        alert(data.error || 'Failed to regenerate image')
+      }
+    } catch (err) {
+      console.error('Failed to regenerate image:', err)
+      alert('Failed to regenerate image')
+    } finally {
+      setRegeneratingId(null)
     }
   }
 
@@ -465,6 +494,42 @@ export default function ApprovalsPage() {
                                               </button>
                                             ))}
                                           </div>
+
+                                          {/* Regenerate Image Button */}
+                                          {approval.proposedChanges?.imageUrl && approval.status === 'PENDING' && (
+                                            <div className="mb-4 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+                                              <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-2">
+                                                  <ImageIcon className="h-4 w-4 text-amber-600" />
+                                                  <span className="text-sm font-medium text-amber-800 dark:text-amber-200">
+                                                    Image not quite right?
+                                                  </span>
+                                                </div>
+                                                <Button
+                                                  variant="outline"
+                                                  size="sm"
+                                                  onClick={() => handleRegenerateImage(approval.id)}
+                                                  disabled={regeneratingId === approval.id}
+                                                  className="border-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/40"
+                                                >
+                                                  {regeneratingId === approval.id ? (
+                                                    <>
+                                                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                                      Regenerating...
+                                                    </>
+                                                  ) : (
+                                                    <>
+                                                      <RefreshCw className="h-4 w-4 mr-2" />
+                                                      Regenerate with Brand Focus
+                                                    </>
+                                                  )}
+                                                </Button>
+                                              </div>
+                                              <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">
+                                                Uses your brand colors, visual style, and book cover context to generate a new image
+                                              </p>
+                                            </div>
+                                          )}
 
                                           {/* Preview container */}
                                           <div className="flex justify-center p-4 bg-gray-100 dark:bg-gray-900 rounded-lg min-h-[300px]">
