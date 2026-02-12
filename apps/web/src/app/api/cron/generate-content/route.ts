@@ -149,7 +149,7 @@ export async function GET(request: NextRequest) {
 
                 const isVideoPlatform = platform === 'tiktok' || platform === 'youtube'
 
-                await db.contentPost.create({
+                const contentPost = await db.contentPost.create({
                   data: {
                     brandId: brand.id,
                     title: `${platform} - ${book.title} - Day ${day + 1}`,
@@ -183,6 +183,33 @@ export async function GET(request: NextRequest) {
                   },
                 })
 
+                // Get org owner/admin to use as requester for AI content
+                const orgMember = await db.organizationMember.findFirst({
+                  where: { organizationId: brand.organizationId, role: { in: ['OWNER', 'ADMIN'] } },
+                  select: { userId: true },
+                })
+
+                if (orgMember) {
+                  await db.approvalRequest.create({
+                    data: {
+                      brandId: brand.id,
+                      requesterId: orgMember.userId,
+                      type: 'CONTENT_PUBLISH',
+                      title: contentPost.title || `${platform} - ${book.title} - Day ${day + 1}`,
+                      description: `AI-generated ${platform} post for "${book.title}"`,
+                      resourceType: 'ContentPost',
+                      resourceId: contentPost.id,
+                      proposedChanges: {
+                        content: result.content,
+                        platforms: [platform],
+                        platformVersions: contentPost.platformVersions,
+                        scheduledFor: scheduledDate.toISOString(),
+                      },
+                      status: 'PENDING',
+                    },
+                  })
+                }
+
                 contentCount++
               } catch (error) {
                 console.error(`Error generating ${platform} for book "${book.title}":`, error)
@@ -212,7 +239,7 @@ export async function GET(request: NextRequest) {
               scheduledDate.setDate(scheduledDate.getDate() + (i === 0 ? 2 : 5))
               scheduledDate.setHours(10 + brand.books.indexOf(book), 0, 0, 0)
 
-              await db.contentPost.create({
+              const blogPost = await db.contentPost.create({
                 data: {
                   brandId: brand.id,
                   title: result.title,
@@ -242,6 +269,33 @@ export async function GET(request: NextRequest) {
                 },
               })
 
+              // Create approval request for blog post
+              const blogOrgMember = await db.organizationMember.findFirst({
+                where: { organizationId: brand.organizationId, role: { in: ['OWNER', 'ADMIN'] } },
+                select: { userId: true },
+              })
+
+              if (blogOrgMember) {
+                await db.approvalRequest.create({
+                  data: {
+                    brandId: brand.id,
+                    requesterId: blogOrgMember.userId,
+                    type: 'CONTENT_PUBLISH',
+                    title: result.title,
+                    description: `AI-generated blog post for "${book.title}"`,
+                    resourceType: 'ContentPost',
+                    resourceId: blogPost.id,
+                    proposedChanges: {
+                      content: result.content,
+                      platforms: ['blog'],
+                      platformVersions: blogPost.platformVersions,
+                      scheduledFor: scheduledDate.toISOString(),
+                    },
+                    status: 'PENDING',
+                  },
+                })
+              }
+
               contentCount++
             } catch (error) {
               console.error(`Error generating blog for book "${book.title}":`, error)
@@ -261,7 +315,7 @@ export async function GET(request: NextRequest) {
             scheduledDate.setDate(scheduledDate.getDate() + 4)
             scheduledDate.setHours(8 + brand.books.indexOf(book), 0, 0, 0)
 
-            await db.contentPost.create({
+            const emailPost = await db.contentPost.create({
               data: {
                 brandId: brand.id,
                 title: `Email: ${book.title} Promo`,
@@ -286,6 +340,33 @@ export async function GET(request: NextRequest) {
                 },
               },
             })
+
+            // Create approval request for email
+            const emailOrgMember = await db.organizationMember.findFirst({
+              where: { organizationId: brand.organizationId, role: { in: ['OWNER', 'ADMIN'] } },
+              select: { userId: true },
+            })
+
+            if (emailOrgMember) {
+              await db.approvalRequest.create({
+                data: {
+                  brandId: brand.id,
+                  requesterId: emailOrgMember.userId,
+                  type: 'CONTENT_PUBLISH',
+                  title: `Email: ${book.title} Promo`,
+                  description: `AI-generated promotional email for "${book.title}"`,
+                  resourceType: 'ContentPost',
+                  resourceId: emailPost.id,
+                  proposedChanges: {
+                    content: result.body,
+                    platforms: ['email'],
+                    platformVersions: emailPost.platformVersions,
+                    scheduledFor: scheduledDate.toISOString(),
+                  },
+                  status: 'PENDING',
+                },
+              })
+            }
 
             contentCount++
           } catch (error) {
@@ -332,7 +413,7 @@ export async function GET(request: NextRequest) {
 
               const isVideoPlatform = platform === 'tiktok' || platform === 'youtube'
 
-              await db.contentPost.create({
+              const socialPost = await db.contentPost.create({
                 data: {
                   brandId: brand.id,
                   title: `${platform} post - ${topic}`,
@@ -363,6 +444,33 @@ export async function GET(request: NextRequest) {
                 },
               })
 
+              // Create approval request for social post
+              const socialOrgMember = await db.organizationMember.findFirst({
+                where: { organizationId: brand.organizationId, role: { in: ['OWNER', 'ADMIN'] } },
+                select: { userId: true },
+              })
+
+              if (socialOrgMember) {
+                await db.approvalRequest.create({
+                  data: {
+                    brandId: brand.id,
+                    requesterId: socialOrgMember.userId,
+                    type: 'CONTENT_PUBLISH',
+                    title: `${platform} post - ${topic}`,
+                    description: `AI-generated ${platform} post for ${brand.name}`,
+                    resourceType: 'ContentPost',
+                    resourceId: socialPost.id,
+                    proposedChanges: {
+                      content: result.content,
+                      platforms: [platform],
+                      platformVersions: socialPost.platformVersions,
+                      scheduledFor: scheduledDate.toISOString(),
+                    },
+                    status: 'PENDING',
+                  },
+                })
+              }
+
               contentCount++
             } catch (error) {
               console.log(`[Cron] ERROR generating ${platform} for ${brand.name}:`, String(error))
@@ -389,7 +497,7 @@ export async function GET(request: NextRequest) {
             scheduledDate.setDate(scheduledDate.getDate() + (i === 0 ? 2 : 5))
             scheduledDate.setHours(10, 0, 0, 0)
 
-            await db.contentPost.create({
+            const brandBlogPost = await db.contentPost.create({
               data: {
                 brandId: brand.id,
                 title: result.title,
@@ -416,6 +524,33 @@ export async function GET(request: NextRequest) {
               },
             })
 
+            // Create approval request for brand blog post
+            const brandBlogOrgMember = await db.organizationMember.findFirst({
+              where: { organizationId: brand.organizationId, role: { in: ['OWNER', 'ADMIN'] } },
+              select: { userId: true },
+            })
+
+            if (brandBlogOrgMember) {
+              await db.approvalRequest.create({
+                data: {
+                  brandId: brand.id,
+                  requesterId: brandBlogOrgMember.userId,
+                  type: 'CONTENT_PUBLISH',
+                  title: result.title,
+                  description: `AI-generated blog post for ${brand.name}`,
+                  resourceType: 'ContentPost',
+                  resourceId: brandBlogPost.id,
+                  proposedChanges: {
+                    content: result.content,
+                    platforms: ['blog'],
+                    platformVersions: brandBlogPost.platformVersions,
+                    scheduledFor: scheduledDate.toISOString(),
+                  },
+                  status: 'PENDING',
+                },
+              })
+            }
+
             contentCount++
           } catch (error) {
             console.error(`Error generating blog for ${brand.name}:`, error)
@@ -434,7 +569,7 @@ export async function GET(request: NextRequest) {
           scheduledDate.setDate(scheduledDate.getDate() + 4)
           scheduledDate.setHours(8, 0, 0, 0)
 
-          await db.contentPost.create({
+          const brandEmailPost = await db.contentPost.create({
             data: {
               brandId: brand.id,
               title: result.subject,
@@ -456,6 +591,33 @@ export async function GET(request: NextRequest) {
               },
             },
           })
+
+          // Create approval request for brand newsletter
+          const brandEmailOrgMember = await db.organizationMember.findFirst({
+            where: { organizationId: brand.organizationId, role: { in: ['OWNER', 'ADMIN'] } },
+            select: { userId: true },
+          })
+
+          if (brandEmailOrgMember) {
+            await db.approvalRequest.create({
+              data: {
+                brandId: brand.id,
+                requesterId: brandEmailOrgMember.userId,
+                type: 'CONTENT_PUBLISH',
+                title: result.subject,
+                description: `AI-generated newsletter for ${brand.name}`,
+                resourceType: 'ContentPost',
+                resourceId: brandEmailPost.id,
+                proposedChanges: {
+                  content: result.body,
+                  platforms: ['email'],
+                  platformVersions: brandEmailPost.platformVersions,
+                  scheduledFor: scheduledDate.toISOString(),
+                },
+                status: 'PENDING',
+              },
+            })
+          }
 
           contentCount++
         } catch (error) {
