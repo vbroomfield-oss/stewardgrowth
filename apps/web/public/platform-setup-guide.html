@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>StewardGrowth - Social Platform Setup Guide</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      line-height: 1.6;
+      color: #333;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 40px 20px;
+    }
+    h1 { color: #6366f1; margin-bottom: 10px; font-size: 28px; }
+    h2 { color: #374151; margin-top: 40px; margin-bottom: 15px; font-size: 22px; border-bottom: 2px solid #e5e7eb; padding-bottom: 10px; }
+    h3 { color: #4b5563; margin-top: 25px; margin-bottom: 10px; font-size: 18px; }
+    p { margin-bottom: 12px; }
+    .subtitle { color: #6b7280; font-size: 16px; margin-bottom: 30px; }
+    .platform { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 25px; margin-bottom: 25px; page-break-inside: avoid; }
+    .platform-header { display: flex; align-items: center; gap: 12px; margin-bottom: 15px; }
+    .platform-icon { width: 40px; height: 40px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 20px; }
+    .twitter { background: #1da1f2; color: white; }
+    .meta { background: #1877f2; color: white; }
+    .tiktok { background: #000; color: white; }
+    .youtube { background: #ff0000; color: white; }
+    .pinterest { background: #e60023; color: white; }
+    ol { margin-left: 25px; margin-bottom: 15px; }
+    li { margin-bottom: 8px; }
+    .env-vars { background: #1f2937; color: #10b981; padding: 15px; border-radius: 6px; font-family: monospace; font-size: 14px; margin: 15px 0; overflow-x: auto; }
+    .callback-url { background: #fef3c7; border: 1px solid #f59e0b; padding: 12px; border-radius: 6px; margin: 15px 0; }
+    .callback-url code { background: #fde68a; padding: 2px 6px; border-radius: 4px; font-size: 13px; }
+    .important { background: #fee2e2; border: 1px solid #ef4444; padding: 12px; border-radius: 6px; margin: 15px 0; }
+    .tip { background: #dbeafe; border: 1px solid #3b82f6; padding: 12px; border-radius: 6px; margin: 15px 0; }
+    .scopes { background: #f3f4f6; padding: 10px 15px; border-radius: 6px; margin: 10px 0; font-family: monospace; font-size: 13px; }
+    a { color: #6366f1; }
+    @media print {
+      body { padding: 20px; }
+      .platform { break-inside: avoid; }
+    }
+    .toc { background: #f3f4f6; padding: 20px; border-radius: 8px; margin-bottom: 30px; }
+    .toc ul { list-style: none; margin-left: 0; }
+    .toc li { margin-bottom: 8px; }
+    .toc a { text-decoration: none; }
+    .toc a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <h1>Social Platform Setup Guide</h1>
+  <p class="subtitle">Complete instructions for connecting all social media platforms to StewardGrowth</p>
+
+  <div class="toc">
+    <h3>Table of Contents</h3>
+    <ul>
+      <li><a href="#twitter">1. Twitter / X</a></li>
+      <li><a href="#meta">2. Meta (Facebook, Instagram, Threads)</a></li>
+      <li><a href="#tiktok">3. TikTok</a></li>
+      <li><a href="#youtube">4. YouTube</a></li>
+      <li><a href="#pinterest">5. Pinterest</a></li>
+      <li><a href="#vercel">6. Adding Variables to Vercel</a></li>
+    </ul>
+  </div>
+
+  <!-- TWITTER -->
+  <div class="platform" id="twitter">
+    <div class="platform-header">
+      <div class="platform-icon twitter">X</div>
+      <h2 style="margin: 0; border: none; padding: 0;">Twitter / X</h2>
+    </div>
+
+    <h3>Step 1: Create a Developer Account</h3>
+    <ol>
+      <li>Go to <a href="https://developer.twitter.com/en/portal/dashboard" target="_blank">https://developer.twitter.com/en/portal/dashboard</a></li>
+      <li>Sign in with your Twitter account</li>
+      <li>Apply for a developer account if you don't have one</li>
+      <li>Choose "Free" tier (allows 1,500 tweets/month)</li>
+    </ol>
+
+    <h3>Step 2: Create a Project & App</h3>
+    <ol>
+      <li>Click "Create Project" in the dashboard</li>
+      <li>Name your project (e.g., "StewardGrowth Marketing")</li>
+      <li>Select use case: "Making a bot" or "Building tools for Twitter users"</li>
+      <li>Create an app within the project</li>
+    </ol>
+
+    <h3>Step 3: Configure OAuth 2.0</h3>
+    <ol>
+      <li>Go to your App Settings > "User authentication settings"</li>
+      <li>Click "Set up"</li>
+      <li>Enable OAuth 2.0</li>
+      <li>Type of App: "Web App, Automated App or Bot"</li>
+    </ol>
+
+    <div class="callback-url">
+      <strong>Callback URL:</strong><br>
+      <code>https://stewardgrowth.vercel.app/api/oauth/twitter/callback</code>
+    </div>
+
+    <div class="scopes">
+      <strong>Required Scopes:</strong> tweet.read, tweet.write, users.read, offline.access
+    </div>
+
+    <h3>Step 4: Get Your Credentials</h3>
+    <ol>
+      <li>Go to "Keys and tokens" tab</li>
+      <li>Copy your Client ID</li>
+      <li>Generate and copy your Client Secret</li>
+    </ol>
+
+    <div class="env-vars">
+TWITTER_CLIENT_ID=your_client_id_here<br>
+TWITTER_CLIENT_SECRET=your_client_secret_here
+    </div>
+  </div>
+
+  <!-- META -->
+  <div class="platform" id="meta">
+    <div class="platform-header">
+      <div class="platform-icon meta">f</div>
+      <h2 style="margin: 0; border: none; padding: 0;">Meta (Facebook, Instagram, Threads)</h2>
+    </div>
+
+    <div class="tip">
+      <strong>One App for Three Platforms:</strong> A single Meta app handles Facebook, Instagram, and Threads.
+    </div>
+
+    <h3>Step 1: Create a Meta Developer Account</h3>
+    <ol>
+      <li>Go to <a href="https://developers.facebook.com/" target="_blank">https://developers.facebook.com/</a></li>
+      <li>Click "Get Started" or "My Apps"</li>
+      <li>Complete developer registration if needed</li>
+    </ol>
+
+    <h3>Step 2: Create an App</h3>
+    <ol>
+      <li>Click "Create App"</li>
+      <li>Select "Business" as the app type</li>
+      <li>Name your app (e.g., "StewardGrowth")</li>
+      <li>Add a contact email</li>
+    </ol>
+
+    <h3>Step 3: Add Products</h3>
+    <ol>
+      <li>In App Dashboard, go to "Add Products"</li>
+      <li>Add "Facebook Login" - click "Set Up"</li>
+      <li>Add "Instagram Graph API" - click "Set Up"</li>
+      <li>Add "Threads API" (if available) - click "Set Up"</li>
+    </ol>
+
+    <h3>Step 4: Configure Facebook Login</h3>
+    <ol>
+      <li>Go to Facebook Login > Settings</li>
+      <li>Enable "Client OAuth Login"</li>
+      <li>Enable "Web OAuth Login"</li>
+    </ol>
+
+    <div class="callback-url">
+      <strong>Valid OAuth Redirect URIs:</strong><br>
+      <code>https://stewardgrowth.vercel.app/api/oauth/facebook/callback</code><br>
+      <code>https://stewardgrowth.vercel.app/api/oauth/instagram/callback</code><br>
+      <code>https://stewardgrowth.vercel.app/api/oauth/threads/callback</code>
+    </div>
+
+    <div class="scopes">
+      <strong>Required Permissions:</strong><br>
+      Facebook: pages_manage_posts, pages_read_engagement, pages_show_list<br>
+      Instagram: instagram_basic, instagram_content_publish, instagram_manage_insights<br>
+      Threads: threads_basic, threads_content_publish
+    </div>
+
+    <h3>Step 5: Get Your Credentials</h3>
+    <ol>
+      <li>Go to Settings > Basic</li>
+      <li>Copy the App ID</li>
+      <li>Click "Show" next to App Secret and copy it</li>
+    </ol>
+
+    <div class="env-vars">
+META_APP_ID=your_app_id_here<br>
+META_APP_SECRET=your_app_secret_here
+    </div>
+
+    <div class="important">
+      <strong>Important Requirements:</strong>
+      <ul style="margin-top: 10px; margin-left: 20px;">
+        <li>Facebook posting requires a Facebook Page (not personal profile)</li>
+        <li>Instagram requires a Business or Creator account</li>
+        <li>Instagram account must be linked to a Facebook Page</li>
+        <li>App must be in "Live" mode for production use</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- TIKTOK -->
+  <div class="platform" id="tiktok">
+    <div class="platform-header">
+      <div class="platform-icon tiktok">T</div>
+      <h2 style="margin: 0; border: none; padding: 0;">TikTok</h2>
+    </div>
+
+    <div class="important">
+      <strong>Video Only:</strong> TikTok only supports video uploads. Text-only posts are not possible.
+    </div>
+
+    <h3>Step 1: Create a TikTok Developer Account</h3>
+    <ol>
+      <li>Go to <a href="https://developers.tiktok.com/" target="_blank">https://developers.tiktok.com/</a></li>
+      <li>Click "Manage apps" or sign up</li>
+      <li>Complete the developer registration</li>
+    </ol>
+
+    <h3>Step 2: Create an App</h3>
+    <ol>
+      <li>Click "Create app"</li>
+      <li>Choose "Content Posting API" as the product</li>
+      <li>Fill in app details</li>
+      <li>Submit for review</li>
+    </ol>
+
+    <h3>Step 3: Configure OAuth</h3>
+    <ol>
+      <li>Go to your app's configuration</li>
+      <li>Add the redirect URI</li>
+    </ol>
+
+    <div class="callback-url">
+      <strong>Redirect URI:</strong><br>
+      <code>https://stewardgrowth.vercel.app/api/oauth/tiktok/callback</code>
+    </div>
+
+    <div class="scopes">
+      <strong>Required Scopes:</strong> user.info.basic, video.publish
+    </div>
+
+    <h3>Step 4: Get Your Credentials</h3>
+    <ol>
+      <li>Go to your app's "Manage" page</li>
+      <li>Copy the Client Key</li>
+      <li>Copy the Client Secret</li>
+    </ol>
+
+    <div class="env-vars">
+TIKTOK_CLIENT_KEY=your_client_key_here<br>
+TIKTOK_CLIENT_SECRET=your_client_secret_here
+    </div>
+
+    <div class="tip">
+      <strong>Approval Process:</strong> TikTok requires app review before going live. This can take 1-2 weeks.
+    </div>
+  </div>
+
+  <!-- YOUTUBE -->
+  <div class="platform" id="youtube">
+    <div class="platform-header">
+      <div class="platform-icon youtube">Y</div>
+      <h2 style="margin: 0; border: none; padding: 0;">YouTube</h2>
+    </div>
+
+    <div class="important">
+      <strong>Video Only:</strong> YouTube API is for video uploads. Community posts require different permissions.
+    </div>
+
+    <h3>Step 1: Create a Google Cloud Project</h3>
+    <ol>
+      <li>Go to <a href="https://console.cloud.google.com/" target="_blank">https://console.cloud.google.com/</a></li>
+      <li>Click "Select a project" > "New Project"</li>
+      <li>Name your project (e.g., "StewardGrowth")</li>
+      <li>Click "Create"</li>
+    </ol>
+
+    <h3>Step 2: Enable YouTube Data API</h3>
+    <ol>
+      <li>In the Google Cloud Console, go to "APIs & Services" > "Library"</li>
+      <li>Search for "YouTube Data API v3"</li>
+      <li>Click on it and click "Enable"</li>
+    </ol>
+
+    <h3>Step 3: Create OAuth Credentials</h3>
+    <ol>
+      <li>Go to "APIs & Services" > "Credentials"</li>
+      <li>Click "Create Credentials" > "OAuth client ID"</li>
+      <li>Configure consent screen first if prompted:
+        <ul>
+          <li>User Type: External</li>
+          <li>Add app name, user support email, developer email</li>
+          <li>Add scopes: youtube.upload, youtube.readonly</li>
+        </ul>
+      </li>
+      <li>Application type: "Web application"</li>
+      <li>Name: "StewardGrowth"</li>
+    </ol>
+
+    <div class="callback-url">
+      <strong>Authorized redirect URI:</strong><br>
+      <code>https://stewardgrowth.vercel.app/api/oauth/youtube/callback</code>
+    </div>
+
+    <div class="scopes">
+      <strong>Required Scopes:</strong><br>
+      https://www.googleapis.com/auth/youtube.upload<br>
+      https://www.googleapis.com/auth/youtube.readonly
+    </div>
+
+    <h3>Step 4: Get Your Credentials</h3>
+    <ol>
+      <li>After creating, you'll see your Client ID</li>
+      <li>Click "Download JSON" or copy the Client Secret</li>
+    </ol>
+
+    <div class="env-vars">
+GOOGLE_CLIENT_ID=your_client_id.apps.googleusercontent.com<br>
+GOOGLE_CLIENT_SECRET=your_client_secret_here
+    </div>
+
+    <div class="tip">
+      <strong>Publishing Status:</strong> While in "Testing" mode, only test users you add can connect. Submit for verification to allow all users.
+    </div>
+  </div>
+
+  <!-- PINTEREST -->
+  <div class="platform" id="pinterest">
+    <div class="platform-header">
+      <div class="platform-icon pinterest">P</div>
+      <h2 style="margin: 0; border: none; padding: 0;">Pinterest</h2>
+    </div>
+
+    <h3>Step 1: Create a Pinterest Developer Account</h3>
+    <ol>
+      <li>Go to <a href="https://developers.pinterest.com/" target="_blank">https://developers.pinterest.com/</a></li>
+      <li>Sign in with your Pinterest account</li>
+      <li>Click "My apps"</li>
+    </ol>
+
+    <h3>Step 2: Create an App</h3>
+    <ol>
+      <li>Click "Create app"</li>
+      <li>Fill in app name and description</li>
+      <li>Select your use case</li>
+    </ol>
+
+    <h3>Step 3: Configure OAuth</h3>
+    <ol>
+      <li>Go to your app settings</li>
+      <li>Add the redirect URI</li>
+    </ol>
+
+    <div class="callback-url">
+      <strong>Redirect URI:</strong><br>
+      <code>https://stewardgrowth.vercel.app/api/oauth/pinterest/callback</code>
+    </div>
+
+    <div class="scopes">
+      <strong>Required Scopes:</strong> pins:read, pins:write, boards:read, boards:write, user_accounts:read
+    </div>
+
+    <h3>Step 4: Get Your Credentials</h3>
+    <ol>
+      <li>In app settings, find your App ID</li>
+      <li>Generate and copy your App Secret</li>
+    </ol>
+
+    <div class="env-vars">
+PINTEREST_APP_ID=your_app_id_here<br>
+PINTEREST_APP_SECRET=your_app_secret_here
+    </div>
+  </div>
+
+  <!-- VERCEL -->
+  <div class="platform" id="vercel">
+    <div class="platform-header">
+      <div class="platform-icon" style="background: #000; color: white;">V</div>
+      <h2 style="margin: 0; border: none; padding: 0;">Adding Variables to Vercel</h2>
+    </div>
+
+    <h3>Step 1: Access Vercel Dashboard</h3>
+    <ol>
+      <li>Go to <a href="https://vercel.com/dashboard" target="_blank">https://vercel.com/dashboard</a></li>
+      <li>Select the "stewardgrowth" project</li>
+    </ol>
+
+    <h3>Step 2: Add Environment Variables</h3>
+    <ol>
+      <li>Go to "Settings" > "Environment Variables"</li>
+      <li>Add each variable one at a time</li>
+      <li>Select environments: Production, Preview, Development</li>
+    </ol>
+
+    <h3>All Required Variables</h3>
+    <div class="env-vars">
+# Twitter/X<br>
+TWITTER_CLIENT_ID=<br>
+TWITTER_CLIENT_SECRET=<br>
+<br>
+# Meta (Facebook, Instagram, Threads)<br>
+META_APP_ID=<br>
+META_APP_SECRET=<br>
+<br>
+# TikTok<br>
+TIKTOK_CLIENT_KEY=<br>
+TIKTOK_CLIENT_SECRET=<br>
+<br>
+# YouTube (Google)<br>
+GOOGLE_CLIENT_ID=<br>
+GOOGLE_CLIENT_SECRET=<br>
+<br>
+# Pinterest<br>
+PINTEREST_APP_ID=<br>
+PINTEREST_APP_SECRET=
+    </div>
+
+    <h3>Step 3: Redeploy</h3>
+    <ol>
+      <li>After adding variables, go to "Deployments"</li>
+      <li>Click the three dots on the latest deployment</li>
+      <li>Select "Redeploy"</li>
+    </ol>
+
+    <div class="tip">
+      <strong>Testing:</strong> After setup, go to /ads in StewardGrowth and try connecting each platform.
+    </div>
+  </div>
+
+  <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb; text-align: center; color: #6b7280;">
+    <p>StewardGrowth Platform Setup Guide</p>
+    <p style="font-size: 12px;">Print this page to PDF: File > Print > Save as PDF</p>
+  </div>
+</body>
+</html>

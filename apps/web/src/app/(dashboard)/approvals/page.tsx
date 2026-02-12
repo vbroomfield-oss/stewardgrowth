@@ -22,7 +22,11 @@ import {
   Copy,
   Upload,
   Check,
+  Smartphone,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react'
+import { PlatformPreview, getPlatformColor, getPlatformIcon } from '@/components/social/platform-preview'
 
 interface Brand {
   id: string
@@ -63,6 +67,8 @@ export default function ApprovalsPage() {
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [uploadingId, setUploadingId] = useState<string | null>(null)
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [previewId, setPreviewId] = useState<string | null>(null)
+  const [selectedPlatform, setSelectedPlatform] = useState<string>('twitter')
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -417,6 +423,72 @@ export default function ApprovalsPage() {
                                     <div className="mt-3 p-3 bg-muted/50 rounded text-sm max-h-32 overflow-y-auto">
                                       {approval.proposedChanges.content.substring(0, 300)}
                                       {approval.proposedChanges.content.length > 300 && '...'}
+                                    </div>
+                                  )}
+
+                                  {/* Platform Preview Button */}
+                                  {!isVideo && approval.proposedChanges?.content && (
+                                    <div className="mt-3">
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => setPreviewId(previewId === approval.id ? null : approval.id)}
+                                        className="gap-2"
+                                      >
+                                        <Smartphone className="h-4 w-4" />
+                                        {previewId === approval.id ? 'Hide' : 'Show'} Platform Previews
+                                        {previewId === approval.id ? (
+                                          <ChevronUp className="h-4 w-4" />
+                                        ) : (
+                                          <ChevronDown className="h-4 w-4" />
+                                        )}
+                                      </Button>
+
+                                      {previewId === approval.id && (
+                                        <div className="mt-4 p-4 bg-muted/30 rounded-lg border">
+                                          {/* Platform selector tabs */}
+                                          <div className="flex flex-wrap gap-2 mb-4">
+                                            {['twitter', 'linkedin', 'facebook', 'instagram', 'threads', 'tiktok', 'youtube', 'pinterest'].map((platform) => (
+                                              <button
+                                                key={platform}
+                                                onClick={() => setSelectedPlatform(platform)}
+                                                className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors flex items-center gap-1.5 ${
+                                                  selectedPlatform === platform
+                                                    ? `${getPlatformColor(platform)} text-white`
+                                                    : 'bg-muted hover:bg-muted/80 text-muted-foreground'
+                                                }`}
+                                              >
+                                                <span className="w-4 h-4 rounded-sm flex items-center justify-center text-[10px] font-bold">
+                                                  {getPlatformIcon(platform)}
+                                                </span>
+                                                <span className="capitalize">{platform}</span>
+                                              </button>
+                                            ))}
+                                          </div>
+
+                                          {/* Preview container */}
+                                          <div className="flex justify-center p-4 bg-gray-100 dark:bg-gray-900 rounded-lg min-h-[300px]">
+                                            <PlatformPreview
+                                              platform={selectedPlatform}
+                                              content={approval.proposedChanges.platformVersions?.[selectedPlatform]?.content || approval.proposedChanges.content}
+                                              imageUrl={approval.proposedChanges.imageUrl}
+                                              authorName={approval.brandName}
+                                              authorHandle={`@${approval.brandName.toLowerCase().replace(/\s+/g, '')}`}
+                                            />
+                                          </div>
+
+                                          {/* Platform-specific content info */}
+                                          {approval.proposedChanges.platformVersions?.[selectedPlatform] && (
+                                            <div className="mt-3 p-3 bg-muted rounded text-xs">
+                                              <p className="font-medium mb-1">Platform-specific version:</p>
+                                              <p className="text-muted-foreground">
+                                                {approval.proposedChanges.platformVersions[selectedPlatform].content?.substring(0, 150)}
+                                                {(approval.proposedChanges.platformVersions[selectedPlatform].content?.length || 0) > 150 && '...'}
+                                              </p>
+                                            </div>
+                                          )}
+                                        </div>
+                                      )}
                                     </div>
                                   )}
 
