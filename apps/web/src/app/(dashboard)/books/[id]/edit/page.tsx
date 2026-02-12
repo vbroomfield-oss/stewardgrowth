@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect, useRef, use } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useParams } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -43,8 +43,9 @@ interface Book {
   }
 }
 
-export default function EditBookPage({ params }: { params: Promise<{ id: string }> }) {
-  const resolvedParams = use(params)
+export default function EditBookPage() {
+  const params = useParams()
+  const bookId = params.id as string
   const router = useRouter()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [loading, setLoading] = useState(true)
@@ -73,7 +74,7 @@ export default function EditBookPage({ params }: { params: Promise<{ id: string 
   useEffect(() => {
     async function fetchBook() {
       try {
-        const res = await fetch(`/api/books/${resolvedParams.id}`, { credentials: 'include' })
+        const res = await fetch(`/api/books/${bookId}`, { credentials: 'include' })
         if (!res.ok) throw new Error('Failed to load book')
         const data = await res.json()
         if (!data.success) throw new Error(data.error || 'Failed to load book')
@@ -103,8 +104,8 @@ export default function EditBookPage({ params }: { params: Promise<{ id: string 
         setLoading(false)
       }
     }
-    fetchBook()
-  }, [resolvedParams.id])
+    if (bookId) fetchBook()
+  }, [bookId])
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -169,7 +170,7 @@ export default function EditBookPage({ params }: { params: Promise<{ id: string 
     setError(null)
 
     try {
-      const res = await fetch(`/api/books/${resolvedParams.id}`, {
+      const res = await fetch(`/api/books/${bookId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -197,7 +198,7 @@ export default function EditBookPage({ params }: { params: Promise<{ id: string 
         throw new Error(data.error || 'Failed to update book')
       }
 
-      router.push(`/books/${resolvedParams.id}`)
+      router.push(`/books/${bookId}`)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to update book')
     } finally {
@@ -217,7 +218,7 @@ export default function EditBookPage({ params }: { params: Promise<{ id: string 
     <div className="space-y-6 max-w-4xl">
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" asChild>
-          <Link href={`/books/${resolvedParams.id}`}>
+          <Link href={`/books/${bookId}`}>
             <ArrowLeft className="h-4 w-4" />
           </Link>
         </Button>
@@ -511,7 +512,7 @@ export default function EditBookPage({ params }: { params: Promise<{ id: string 
         {/* Actions */}
         <div className="flex items-center justify-end gap-4">
           <Button variant="outline" asChild>
-            <Link href={`/books/${resolvedParams.id}`}>Cancel</Link>
+            <Link href={`/books/${bookId}`}>Cancel</Link>
           </Button>
           <Button type="submit" disabled={isLoading || isUploading || !formData.title || !formData.author}>
             {isLoading ? (

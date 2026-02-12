@@ -1,7 +1,8 @@
 'use client'
 
-import { useEffect, useState, use } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { useParams } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -82,8 +83,9 @@ interface Book {
   }
 }
 
-export default function BookDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const resolvedParams = use(params)
+export default function BookDetailPage() {
+  const params = useParams()
+  const bookId = params.id as string
   const [book, setBook] = useState<Book | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -91,7 +93,7 @@ export default function BookDetailPage({ params }: { params: Promise<{ id: strin
   useEffect(() => {
     async function fetchBook() {
       try {
-        const res = await fetch(`/api/books/${resolvedParams.id}`, { credentials: 'include' })
+        const res = await fetch(`/api/books/${bookId}`, { credentials: 'include' })
         if (!res.ok) throw new Error('Failed to load book')
         const data = await res.json()
         if (!data.success) throw new Error(data.error || 'Failed to load book')
@@ -102,8 +104,8 @@ export default function BookDetailPage({ params }: { params: Promise<{ id: strin
         setLoading(false)
       }
     }
-    fetchBook()
-  }, [resolvedParams.id])
+    if (bookId) fetchBook()
+  }, [bookId])
 
   if (loading) {
     return (
@@ -175,7 +177,7 @@ export default function BookDetailPage({ params }: { params: Promise<{ id: strin
             </Button>
           )}
           <Button variant="outline" asChild>
-            <Link href={`/books/${resolvedParams.id}/edit`}>
+            <Link href={`/books/${bookId}/edit`}>
               <Edit2 className="mr-2 h-4 w-4" />
               Edit
             </Link>
