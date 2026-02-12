@@ -21,12 +21,15 @@ function verifyCronRequest(request: NextRequest): boolean {
 // All supported social platforms including video
 type SocialPlatform = 'twitter' | 'linkedin' | 'facebook' | 'instagram' | 'tiktok' | 'threads' | 'youtube' | 'pinterest'
 
-// Split platforms into 4 daily batches (2 platforms each) for smaller cron runs
+// Split platforms into 7 daily batches (1 platform each) for minimal load per run
 const BATCH_PLATFORMS: Record<string, SocialPlatform[]> = {
-  '1': ['twitter', 'linkedin'],      // Monday
-  '2': ['facebook', 'instagram'],    // Tuesday
-  '3': ['tiktok', 'threads'],        // Wednesday
-  '4': ['youtube', 'pinterest'],     // Thursday
+  '1': ['twitter'],       // Monday - also includes blogs + email
+  '2': ['linkedin'],      // Tuesday
+  '3': ['facebook'],      // Wednesday
+  '4': ['instagram'],     // Thursday
+  '5': ['threads'],       // Friday
+  '6': ['tiktok'],        // Saturday (video - no image generation)
+  '7': ['youtube', 'pinterest'],  // Sunday (youtube=video, pinterest=quick)
 }
 
 // Generate book-specific topics from description
@@ -46,13 +49,16 @@ function generateBookTopics(book: { title: string; description: string | null; c
 /**
  * GET /api/cron/generate-content
  *
- * Runs daily Mon-Thu at 12 PM EST / 5 PM UTC
- * ?batch=1 (Monday): twitter, linkedin + blogs + email
- * ?batch=2 (Tuesday): facebook, instagram
- * ?batch=3 (Wednesday): tiktok, threads
- * ?batch=4 (Thursday): youtube, pinterest
+ * Runs daily at 12 PM EST / 5 PM UTC
+ * ?batch=1 (Monday): twitter + blogs + email
+ * ?batch=2 (Tuesday): linkedin
+ * ?batch=3 (Wednesday): facebook
+ * ?batch=4 (Thursday): instagram
+ * ?batch=5 (Friday): threads
+ * ?batch=6 (Saturday): tiktok (video - no image generation)
+ * ?batch=7 (Sunday): youtube + pinterest
  *
- * Each batch generates 2 days of content per platform
+ * Each batch generates 1 day of content per platform to minimize load
  */
 export async function GET(request: NextRequest) {
   if (!verifyCronRequest(request)) {
@@ -64,8 +70,8 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const batch = searchParams.get('batch') || '1'
     const platforms = BATCH_PLATFORMS[batch] || BATCH_PLATFORMS['1']
-    const daysToGenerate = 2 // Generate 2 days of content per batch
-    const includeBlogsAndEmail = batch === '1' // Only generate blogs/email in batch 1
+    const daysToGenerate = 1 // Generate 1 day of content per batch (reduced load)
+    const includeBlogsAndEmail = batch === '1' // Only generate blogs/email in batch 1 (Monday)
 
     console.log(`[Cron] Starting batch ${batch} content generation (${platforms.join(', ')})...`)
 

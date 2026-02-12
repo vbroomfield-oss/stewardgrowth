@@ -23,6 +23,18 @@
       "schedule": "0 17 * * 4"
     },
     {
+      "path": "/api/cron/generate-content?batch=5",
+      "schedule": "0 17 * * 5"
+    },
+    {
+      "path": "/api/cron/generate-content?batch=6",
+      "schedule": "0 17 * * 6"
+    },
+    {
+      "path": "/api/cron/generate-content?batch=7",
+      "schedule": "0 17 * * 0"
+    },
+    {
       "path": "/api/cron/publish-content",
       "schedule": "*/15 * * * *"
     },
