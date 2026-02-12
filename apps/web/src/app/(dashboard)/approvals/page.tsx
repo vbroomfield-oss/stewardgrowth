@@ -72,6 +72,8 @@ export default function ApprovalsPage() {
   const [previewId, setPreviewId] = useState<string | null>(null)
   const [selectedPlatform, setSelectedPlatform] = useState<string>('twitter')
   const [regeneratingId, setRegeneratingId] = useState<string | null>(null)
+  const [regeneratingAll, setRegeneratingAll] = useState(false)
+  const [regenerateProgress, setRegenerateProgress] = useState({ current: 0, total: 0 })
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -198,6 +200,63 @@ export default function ApprovalsPage() {
     } finally {
       setRegeneratingId(null)
     }
+  }
+
+  async function handleRegenerateAllPending() {
+    // Get pending approvals that have images
+    const pendingWithImages = approvals.filter(
+      a => a.status === 'PENDING' && a.proposedChanges?.imageUrl
+    )
+
+    if (pendingWithImages.length === 0) {
+      alert('No pending approvals with images to regenerate')
+      return
+    }
+
+    const confirmed = window.confirm(
+      `This will regenerate images for ${pendingWithImages.length} pending approval(s) using book covers or brand logos where available. Continue?`
+    )
+
+    if (!confirmed) return
+
+    setRegeneratingAll(true)
+    setRegenerateProgress({ current: 0, total: pendingWithImages.length })
+
+    let successCount = 0
+    let failCount = 0
+
+    for (let i = 0; i < pendingWithImages.length; i++) {
+      const approval = pendingWithImages[i]
+      setRegenerateProgress({ current: i + 1, total: pendingWithImages.length })
+
+      try {
+        const res = await fetch(`/api/approvals/${approval.id}/regenerate-image`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+        })
+
+        if (res.ok) {
+          successCount++
+        } else {
+          failCount++
+        }
+      } catch (err) {
+        console.error(`Failed to regenerate image for ${approval.id}:`, err)
+        failCount++
+      }
+
+      // Small delay between requests to avoid rate limiting
+      await new Promise(resolve => setTimeout(resolve, 500))
+    }
+
+    setRegeneratingAll(false)
+    setRegenerateProgress({ current: 0, total: 0 })
+
+    // Refresh data
+    await fetchData()
+
+    alert(`Regeneration complete!\n${successCount} succeeded, ${failCount} failed`)
   }
 
   // Check if content is for a video platform
@@ -374,16 +433,40 @@ export default function ApprovalsPage() {
             <TabsContent value={activeTab} className="mt-6">
               <Card>
                 <CardHeader>
-                  <CardTitle>
-                    {activeTab === 'pending' && 'Pending Approvals'}
-                    {activeTab === 'approved' && 'Approved Items'}
-                    {activeTab === 'rejected' && 'Rejected Items'}
-                  </CardTitle>
-                  <CardDescription>
-                    {activeTab === 'pending' && 'AI-generated content waiting for your review'}
-                    {activeTab === 'approved' && 'Content approved and ready for publishing'}
-                    {activeTab === 'rejected' && 'Content that was not approved'}
-                  </CardDescription>
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <CardTitle>
+                        {activeTab === 'pending' && 'Pending Approvals'}
+                        {activeTab === 'approved' && 'Approved Items'}
+                        {activeTab === 'rejected' && 'Rejected Items'}
+                      </CardTitle>
+                      <CardDescription>
+                        {activeTab === 'pending' && 'AI-generated content waiting for your review'}
+                        {activeTab === 'approved' && 'Content approved and ready for publishing'}
+                        {activeTab === 'rejected' && 'Content that was not approved'}
+                      </CardDescription>
+                    </div>
+                    {activeTab === 'pending' && stats.pending > 0 && (
+                      <Button
+                        variant="outline"
+                        onClick={handleRegenerateAllPending}
+                        disabled={regeneratingAll}
+                        className="gap-2"
+                      >
+                        {regeneratingAll ? (
+                          <>
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            {regenerateProgress.current}/{regenerateProgress.total}
+                          </>
+                        ) : (
+                          <>
+                            <RefreshCw className="h-4 w-4" />
+                            Regenerate All Images
+                          </>
+                        )}
+                      </Button>
+                    )}
+                  </div>
                 </CardHeader>
                 <CardContent>
                   {filteredApprovals.length === 0 ? (

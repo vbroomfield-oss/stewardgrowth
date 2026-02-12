@@ -110,16 +110,28 @@ export async function PATCH(
       )
     }
 
+    // Merge individual fields into settings
+    const existingSettings = (existingBrand.settings as Record<string, any>) || {}
+    const updatedSettings = {
+      ...existingSettings,
+      ...(body.color !== undefined && { color: body.color }),
+      ...(body.timezone !== undefined && { timezone: body.timezone }),
+      ...(body.currency !== undefined && { currency: body.currency }),
+      ...(body.logoUrl !== undefined && { logoUrl: body.logoUrl }),
+      ...(body.settings && { ...body.settings }),
+    }
+
     const updatedBrand = await db.saaSBrand.update({
       where: { id: existingBrand.id },
       data: {
         name: body.name ?? existingBrand.name,
         domain: body.domain ?? existingBrand.domain,
+        logo: body.logoUrl ?? existingBrand.logo,
         brandVoice: body.brandVoice ?? existingBrand.brandVoice,
         targetAudiences: body.targetAudiences ?? existingBrand.targetAudiences,
         goals: body.goals ?? existingBrand.goals,
         budgetConstraints: body.budgetConstraints ?? existingBrand.budgetConstraints,
-        settings: body.settings ?? existingBrand.settings,
+        settings: updatedSettings,
       },
     })
 

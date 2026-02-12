@@ -444,18 +444,27 @@ export async function GET(request: NextRequest) {
 
               const isVideoPlatform = platform === 'tiktok' || platform === 'youtube'
 
-              // Generate image for non-video platforms
+              // For non-video platforms: Use brand logo if available, otherwise generate image
               let brandImageUrl: string | undefined
               if (!isVideoPlatform) {
-                const imageResult = await generateSocialImage(result.content, {
-                  platform,
-                  brandName: brand.name,
-                  style: 'professional',
-                })
-                if ('url' in imageResult) {
-                  brandImageUrl = imageResult.url
+                // Check for brand logo in settings or logo field
+                const brandLogo = brand.logo || settings.logoUrl
+                if (brandLogo) {
+                  // USE THE BRAND LOGO DIRECTLY - best for SaaS marketing!
+                  brandImageUrl = brandLogo
+                  console.log(`[Cron] Using brand logo for ${platform}: ${brand.name}`)
                 } else {
-                  console.log(`[Cron] Image generation failed for ${platform}: ${imageResult.error}`)
+                  // No brand logo - generate a mood/scenic image
+                  const imageResult = await generateSocialImage(result.content, {
+                    platform,
+                    brandName: brand.name,
+                    style: 'professional',
+                  })
+                  if ('url' in imageResult) {
+                    brandImageUrl = imageResult.url
+                  } else {
+                    console.log(`[Cron] Image generation failed for ${platform}: ${imageResult.error}`)
+                  }
                 }
               }
 

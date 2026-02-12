@@ -22,6 +22,9 @@ import {
   AlertCircle,
   Copy,
   Check,
+  Image,
+  Scan,
+  Sparkles,
 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -50,6 +53,7 @@ export default function BrandSettingsPage() {
   const [error, setError] = useState<string | null>(null)
   const [copiedKey, setCopiedKey] = useState(false)
   const [copiedId, setCopiedId] = useState(false)
+  const [isAnalyzing, setIsAnalyzing] = useState(false)
 
   // Form state
   const [formData, setFormData] = useState({
@@ -60,6 +64,7 @@ export default function BrandSettingsPage() {
     timezone: 'America/New_York',
     currency: 'USD',
     brandVoicePersonality: '',
+    logoUrl: '',
   })
 
   useEffect(() => {
@@ -84,6 +89,7 @@ export default function BrandSettingsPage() {
         timezone: result.brand.settings?.timezone || 'America/New_York',
         currency: result.brand.settings?.currency || 'USD',
         brandVoicePersonality: result.brand.brandVoice?.personality || '',
+        logoUrl: result.brand.settings?.logoUrl || '',
       })
     } catch (err: any) {
       setError(err.message)
@@ -105,6 +111,7 @@ export default function BrandSettingsPage() {
           color: formData.color,
           timezone: formData.timezone,
           currency: formData.currency,
+          logoUrl: formData.logoUrl,
           brandVoice: {
             ...brand?.brandVoice,
             personality: formData.brandVoicePersonality,
@@ -164,6 +171,59 @@ export default function BrandSettingsPage() {
       })
     } finally {
       setIsDeleting(false)
+    }
+  }
+
+  const handleAnalyzeLandingPage = async () => {
+    if (!formData.domain) {
+      toast({
+        title: 'Domain required',
+        description: 'Please enter a domain first to analyze your landing page.',
+        variant: 'destructive',
+      })
+      return
+    }
+
+    setIsAnalyzing(true)
+    try {
+      const response = await fetch('/api/brands/analyze-landing-page', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          brandId: brand?.id,
+          domain: formData.domain,
+        }),
+      })
+
+      const result = await response.json()
+
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to analyze landing page')
+      }
+
+      // Update form with extracted data
+      if (result.data) {
+        setFormData(prev => ({
+          ...prev,
+          logoUrl: result.data.logoUrl || prev.logoUrl,
+          color: result.data.primaryColor || prev.color,
+          description: result.data.description || prev.description,
+          brandVoicePersonality: result.data.brandVoice || prev.brandVoicePersonality,
+        }))
+      }
+
+      toast({
+        title: 'Landing page analyzed',
+        description: 'Brand identity extracted! Review the changes and click Save.',
+      })
+    } catch (err: any) {
+      toast({
+        title: 'Analysis failed',
+        description: err.message,
+        variant: 'destructive',
+      })
+    } finally {
+      setIsAnalyzing(false)
     }
   }
 
@@ -363,6 +423,79 @@ export default function BrandSettingsPage() {
               <CardDescription>Customize your brand&apos;s visual identity and voice</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
+              {/* Auto-Extract from Landing Page */}
+              <div className="p-4 bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20 border border-indigo-200 dark:border-indigo-800 rounded-lg">
+                <div className="flex items-start gap-4">
+                  <div className="p-2 bg-indigo-100 dark:bg-indigo-800 rounded-lg">
+                    <Sparkles className="h-6 w-6 text-indigo-600 dark:text-indigo-300" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-indigo-900 dark:text-indigo-100">
+                      Auto-Extract Brand Identity
+                    </h3>
+                    <p className="text-sm text-indigo-700 dark:text-indigo-300 mt-1">
+                      Analyze your landing page to automatically extract your logo, brand colors, and messaging.
+                    </p>
+                    <Button
+                      className="mt-3"
+                      variant="outline"
+                      onClick={handleAnalyzeLandingPage}
+                      disabled={isAnalyzing || !formData.domain}
+                    >
+                      {isAnalyzing ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Analyzing...
+                        </>
+                      ) : (
+                        <>
+                          <Scan className="mr-2 h-4 w-4" />
+                          Analyze Landing Page
+                        </>
+                      )}
+                    </Button>
+                    {!formData.domain && (
+                      <p className="text-xs text-amber-600 dark:text-amber-400 mt-2">
+                        Add your domain in General settings first
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Logo URL */}
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">
+                  <Image className="h-4 w-4" />
+                  Brand Logo
+                </Label>
+                <div className="flex items-start gap-4">
+                  <div className="flex-1">
+                    <Input
+                      placeholder="https://example.com/logo.png"
+                      value={formData.logoUrl}
+                      onChange={(e) => setFormData({ ...formData, logoUrl: e.target.value })}
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Paste the URL to your logo image. This will be used in AI-generated marketing content.
+                    </p>
+                  </div>
+                  {formData.logoUrl && (
+                    <div className="w-20 h-20 border rounded-lg bg-white dark:bg-gray-900 flex items-center justify-center overflow-hidden">
+                      <img
+                        src={formData.logoUrl}
+                        alt="Logo preview"
+                        className="max-w-full max-h-full object-contain"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).style.display = 'none'
+                        }}
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Brand Color */}
               <div className="space-y-2">
                 <Label>Brand Color</Label>
                 <div className="flex items-center gap-4">
@@ -380,6 +513,7 @@ export default function BrandSettingsPage() {
                 </div>
               </div>
 
+              {/* Brand Voice */}
               <div className="space-y-2">
                 <Label>Brand Voice (AI Content)</Label>
                 <Textarea

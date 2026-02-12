@@ -7,6 +7,7 @@ import { generateImage } from '@/lib/ai/openai'
 
 interface BrandSettings {
   color?: string
+  logoUrl?: string
   visualStyle?: {
     colors?: string
     imageStyle?: string
@@ -49,6 +50,7 @@ export async function POST(
           select: {
             id: true,
             name: true,
+            logo: true,
             settings: true,
             brandVoice: true,
             books: {
@@ -181,6 +183,79 @@ export async function POST(
           source: 'book_cover',
         },
         message: 'Using book cover image - the best choice for book marketing!',
+      })
+    }
+
+    // Check for brand logo (for SaaS/app brands without books)
+    const brandLogo = approval.brand?.logo || brandSettings.logoUrl
+    if (brandLogo && (!approval.brand?.books || approval.brand.books.length === 0)) {
+      console.log('[Regenerate Image] Using brand logo directly:', brandLogo)
+
+      // Update the approval's proposedChanges with brand logo
+      const updatedProposedChanges = {
+        ...proposedChanges,
+        imageUrl: brandLogo,
+        imageRegeneratedAt: new Date().toISOString(),
+        imageSource: 'brand_logo',
+      }
+
+      await db.approvalRequest.update({
+        where: { id: approvalId },
+        data: {
+          proposedChanges: updatedProposedChanges,
+        },
+      })
+
+      // Also update the content post if it exists
+      if (contentPost) {
+        const existingMedia = (contentPost.media || []) as Array<{ url: string; type: string }>
+        const updatedMedia = existingMedia.length > 0
+          ? existingMedia.map((m, i) => i === 0 ? { ...m, url: brandLogo } : m)
+          : [{ url: brandLogo, type: 'image' }]
+
+        const existingPlatformVersions = (contentPost.platformVersions || {}) as Record<string, any>
+        const updatedPlatformVersions: Record<string, any> = {}
+
+        for (const [p, version] of Object.entries(existingPlatformVersions)) {
+          updatedPlatformVersions[p] = {
+            ...version,
+            imageUrl: brandLogo,
+          }
+        }
+
+        await db.contentPost.update({
+          where: { id: contentPost.id },
+          data: {
+            media: updatedMedia,
+            platformVersions: updatedPlatformVersions,
+          },
+        })
+      }
+
+      // Create audit log
+      await db.auditLog.create({
+        data: {
+          userId: userWithOrg.id,
+          organizationId: userWithOrg.organizationId,
+          action: 'approval.use_brand_logo',
+          resource: 'ApprovalRequest',
+          resourceId: approvalId,
+          changes: {
+            before: { imageUrl: proposedChanges.imageUrl },
+            after: { imageUrl: brandLogo, source: 'brand_logo' },
+          },
+        },
+      })
+
+      return NextResponse.json({
+        success: true,
+        data: {
+          imageUrl: brandLogo,
+          approvalId,
+          regeneratedAt: new Date().toISOString(),
+          source: 'brand_logo',
+        },
+        message: 'Using brand logo - the best choice for SaaS marketing!',
       })
     }
 
