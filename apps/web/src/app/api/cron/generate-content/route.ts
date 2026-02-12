@@ -4,6 +4,7 @@ import {
   generateSocialPost,
   generateEmail,
   generateSEOBlogPost,
+  generateSocialImage,
   type BrandVoice,
 } from '@/lib/ai/openai'
 import { sendApprovalNotification } from '@/lib/email/client'
@@ -149,6 +150,22 @@ export async function GET(request: NextRequest) {
 
                 const isVideoPlatform = platform === 'tiktok' || platform === 'youtube'
 
+                // Generate image for non-video platforms
+                let imageUrl: string | undefined
+                if (!isVideoPlatform) {
+                  const imageResult = await generateSocialImage(result.content, {
+                    platform,
+                    brandName: brand.name,
+                    bookTitle: book.title,
+                    style: 'professional',
+                  })
+                  if ('url' in imageResult) {
+                    imageUrl = imageResult.url
+                  } else {
+                    console.log(`[Cron] Image generation failed for ${platform}: ${imageResult.error}`)
+                  }
+                }
+
                 const contentPost = await db.contentPost.create({
                   data: {
                     brandId: brand.id,
@@ -165,6 +182,7 @@ export async function GET(request: NextRequest) {
                         content: result.content,
                         hashtags: result.hashtags,
                         mediaRecommendation: result.mediaRecommendation,
+                        imageUrl,
                         bookId: book.id,
                         bookTitle: book.title,
                         amazonUrl: book.amazonUrl,
@@ -413,6 +431,21 @@ export async function GET(request: NextRequest) {
 
               const isVideoPlatform = platform === 'tiktok' || platform === 'youtube'
 
+              // Generate image for non-video platforms
+              let brandImageUrl: string | undefined
+              if (!isVideoPlatform) {
+                const imageResult = await generateSocialImage(result.content, {
+                  platform,
+                  brandName: brand.name,
+                  style: 'professional',
+                })
+                if ('url' in imageResult) {
+                  brandImageUrl = imageResult.url
+                } else {
+                  console.log(`[Cron] Image generation failed for ${platform}: ${imageResult.error}`)
+                }
+              }
+
               const socialPost = await db.contentPost.create({
                 data: {
                   brandId: brand.id,
@@ -429,6 +462,7 @@ export async function GET(request: NextRequest) {
                       content: result.content,
                       hashtags: result.hashtags,
                       mediaRecommendation: result.mediaRecommendation,
+                      imageUrl: brandImageUrl,
                       ...(isVideoPlatform && {
                         isVideo: true,
                         videoScript: result.videoScript,

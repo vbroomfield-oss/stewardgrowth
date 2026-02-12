@@ -878,6 +878,13 @@ enum AdPlatform {
   META_ADS
   LINKEDIN_ADS
   TIKTOK_ADS
+  // Social platforms for organic posting
+  TWITTER
+  FACEBOOK
+  INSTAGRAM
+  THREADS
+  YOUTUBE
+  PINTEREST
 }
 
 enum ConnectionStatus {

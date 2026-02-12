@@ -40,9 +40,13 @@ interface PlatformConnection {
 
 const PLATFORMS = [
   { id: 'linkedin', name: 'LinkedIn', color: 'text-sky-600', enabled: true },
-  { id: 'twitter', name: 'Twitter / X', color: 'text-gray-800', enabled: false },
-  { id: 'facebook', name: 'Facebook', color: 'text-blue-600', enabled: false },
-  { id: 'instagram', name: 'Instagram', color: 'text-pink-600', enabled: false },
+  { id: 'twitter', name: 'Twitter / X', color: 'text-gray-800', enabled: true },
+  { id: 'facebook', name: 'Facebook', color: 'text-blue-600', enabled: true },
+  { id: 'instagram', name: 'Instagram', color: 'text-pink-600', enabled: true },
+  { id: 'threads', name: 'Threads', color: 'text-gray-900', enabled: true },
+  { id: 'tiktok', name: 'TikTok', color: 'text-rose-500', enabled: true },
+  { id: 'youtube', name: 'YouTube', color: 'text-red-600', enabled: true },
+  { id: 'pinterest', name: 'Pinterest', color: 'text-red-700', enabled: true },
 ]
 
 function AdsPageContent() {
@@ -136,10 +140,10 @@ function AdsPageContent() {
   return (
     <div className="space-y-6">
       {/* Success/Error Messages */}
-      {success === 'linkedin_connected' && (
+      {success && success.endsWith('_connected') && (
         <div className="bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-lg flex items-center gap-2">
           <CheckCircle className="h-5 w-5" />
-          LinkedIn connected successfully!
+          {success.replace('_connected', '').replace(/_/g, ' ')} connected successfully!
         </div>
       )}
       {error && (
@@ -203,7 +207,7 @@ function AdsPageContent() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                 {PLATFORMS.map((platform) => {
                   const connection = getConnectionStatus(platform.id)
                   const isConnected = connection?.status === 'CONNECTED'

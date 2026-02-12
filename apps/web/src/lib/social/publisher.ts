@@ -1,6 +1,13 @@
 import { db } from '@/lib/db'
 import type { SocialPlatform, PostOptions, PostResult, SocialCredentials } from './types'
 import { createLinkedInClient } from './linkedin-client'
+import { createTwitterClient } from './twitter-client'
+import { createFacebookClient } from './facebook-client'
+import { createInstagramClient } from './instagram-client'
+import { createThreadsClient } from './threads-client'
+import { createTikTokClient } from './tiktok-client'
+import { createYouTubeClient } from './youtube-client'
+import { createPinterestClient } from './pinterest-client'
 
 /**
  * Unified Social Media Publisher
@@ -57,21 +64,38 @@ export class SocialPublisher {
       }
 
       case 'twitter': {
-        // TODO: Implement Twitter client
-        console.log(`[Publisher] Twitter posting not yet implemented`)
-        return { success: false, error: 'Twitter integration coming soon' }
+        const client = createTwitterClient(conn.credentials)
+        return client.post(options)
       }
 
       case 'facebook': {
-        // TODO: Implement Facebook client
-        console.log(`[Publisher] Facebook posting not yet implemented`)
-        return { success: false, error: 'Facebook integration coming soon' }
+        const client = createFacebookClient(conn.credentials)
+        return client.post(options)
       }
 
       case 'instagram': {
-        // TODO: Implement Instagram client
-        console.log(`[Publisher] Instagram posting not yet implemented`)
-        return { success: false, error: 'Instagram integration coming soon' }
+        const client = createInstagramClient(conn.credentials)
+        return client.post(options)
+      }
+
+      case 'threads': {
+        const client = createThreadsClient(conn.credentials)
+        return client.post(options)
+      }
+
+      case 'tiktok': {
+        const client = createTikTokClient(conn.credentials)
+        return client.post(options)
+      }
+
+      case 'youtube': {
+        const client = createYouTubeClient(conn.credentials)
+        return client.post(options)
+      }
+
+      case 'pinterest': {
+        const client = createPinterestClient(conn.credentials)
+        return client.post(options)
       }
 
       default:
@@ -123,12 +147,24 @@ export function createPublisher(brandId: string): SocialPublisher {
  * Disconnect a platform
  */
 export async function disconnectPlatform(brandId: string, platform: SocialPlatform) {
-  const platformEnum = `${platform.toUpperCase()}_ADS` as any
+  // Map platform names to enum values
+  const platformMap: Record<string, string> = {
+    linkedin: 'LINKEDIN_ADS',
+    twitter: 'TWITTER',
+    facebook: 'FACEBOOK',
+    instagram: 'INSTAGRAM',
+    threads: 'THREADS',
+    tiktok: 'TIKTOK_ADS',
+    youtube: 'YOUTUBE',
+    pinterest: 'PINTEREST',
+  }
+
+  const platformEnum = platformMap[platform] || `${platform.toUpperCase()}`
 
   await db.adPlatformConnection.updateMany({
     where: {
       brandId,
-      platform: platformEnum,
+      platform: platformEnum as any,
     },
     data: {
       status: 'DISCONNECTED',

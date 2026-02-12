@@ -704,4 +704,81 @@ Format as JSON:
   return JSON.parse(response.choices[0].message.content || '{}')
 }
 
+/**
+ * Generate an image using DALL-E
+ */
+export async function generateImage(
+  prompt: string,
+  options: {
+    size?: '1024x1024' | '1792x1024' | '1024x1792'
+    quality?: 'standard' | 'hd'
+    style?: 'vivid' | 'natural'
+  } = {}
+): Promise<{ url: string } | { error: string }> {
+  try {
+    const response = await getOpenAI().images.generate({
+      model: 'dall-e-3',
+      prompt: prompt,
+      n: 1,
+      size: options.size || '1024x1024',
+      quality: options.quality || 'standard',
+      style: options.style || 'natural',
+    })
+
+    const imageUrl = response.data?.[0]?.url
+    if (!imageUrl) {
+      return { error: 'No image URL returned' }
+    }
+
+    return { url: imageUrl }
+  } catch (error) {
+    console.error('[DALL-E] Image generation failed:', error)
+    return { error: String(error) }
+  }
+}
+
+/**
+ * Generate a social media image based on post content
+ */
+export async function generateSocialImage(
+  content: string,
+  options: {
+    platform: string
+    brandName: string
+    bookTitle?: string
+    style?: 'professional' | 'vibrant' | 'minimalist'
+  }
+): Promise<{ url: string } | { error: string }> {
+  // Create an image prompt based on the content
+  const styleGuide = {
+    professional: 'clean, corporate, modern design with subtle gradients',
+    vibrant: 'colorful, energetic, eye-catching with bold colors',
+    minimalist: 'simple, elegant, lots of white space, minimal elements',
+  }
+
+  const platformSizes: Record<string, '1024x1024' | '1792x1024' | '1024x1792'> = {
+    instagram: '1024x1024',
+    facebook: '1792x1024',
+    twitter: '1792x1024',
+    linkedin: '1792x1024',
+    pinterest: '1024x1792',
+    tiktok: '1024x1792',
+    youtube: '1792x1024',
+    threads: '1024x1024',
+  }
+
+  const prompt = `Create a ${styleGuide[options.style || 'professional']} social media graphic for ${options.platform}.
+${options.bookTitle ? `The image should relate to the book "${options.bookTitle}".` : ''}
+Brand: ${options.brandName}
+Content theme: ${content.substring(0, 200)}
+
+IMPORTANT: Do NOT include any text, words, letters, or typography in the image. Create a purely visual graphic that conveys the mood and theme. Use imagery, colors, and visual elements only.`
+
+  return generateImage(prompt, {
+    size: platformSizes[options.platform] || '1024x1024',
+    quality: 'standard',
+    style: 'natural',
+  })
+}
+
 export { getOpenAI }
