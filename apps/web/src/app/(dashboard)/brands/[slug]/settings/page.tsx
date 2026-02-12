@@ -54,6 +54,7 @@ export default function BrandSettingsPage() {
   const [copiedKey, setCopiedKey] = useState(false)
   const [copiedId, setCopiedId] = useState(false)
   const [isAnalyzing, setIsAnalyzing] = useState(false)
+  const [logoStatus, setLogoStatus] = useState<'idle' | 'loading' | 'loaded' | 'error'>('idle')
 
   // Form state
   const [formData, setFormData] = useState({
@@ -81,6 +82,7 @@ export default function BrandSettingsPage() {
       }
 
       setBrand(result.brand)
+      const logoUrl = result.brand.logo || result.brand.settings?.logoUrl || ''
       setFormData({
         name: result.brand.name || '',
         domain: result.brand.domain || '',
@@ -89,8 +91,11 @@ export default function BrandSettingsPage() {
         timezone: result.brand.settings?.timezone || 'America/New_York',
         currency: result.brand.settings?.currency || 'USD',
         brandVoicePersonality: result.brand.brandVoice?.personality || '',
-        logoUrl: result.brand.settings?.logoUrl || '',
+        logoUrl,
       })
+      if (logoUrl) {
+        setLogoStatus('loading')
+      }
     } catch (err: any) {
       setError(err.message)
     } finally {
@@ -474,21 +479,33 @@ export default function BrandSettingsPage() {
                     <Input
                       placeholder="https://example.com/logo.png"
                       value={formData.logoUrl}
-                      onChange={(e) => setFormData({ ...formData, logoUrl: e.target.value })}
+                      onChange={(e) => {
+                        setFormData({ ...formData, logoUrl: e.target.value })
+                        setLogoStatus(e.target.value ? 'loading' : 'idle')
+                      }}
                     />
                     <p className="text-xs text-muted-foreground mt-1">
                       Paste the URL to your logo image. This will be used in AI-generated marketing content.
                     </p>
                   </div>
                   {formData.logoUrl && (
-                    <div className="w-20 h-20 border rounded-lg bg-white dark:bg-gray-900 flex items-center justify-center overflow-hidden">
+                    <div className="w-20 h-20 border rounded-lg bg-white dark:bg-gray-900 flex items-center justify-center overflow-hidden relative">
+                      {logoStatus === 'loading' && (
+                        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                      )}
+                      {logoStatus === 'error' && (
+                        <div className="text-center p-1">
+                          <AlertCircle className="h-5 w-5 text-red-500 mx-auto" />
+                          <p className="text-[10px] text-red-500 mt-1">Failed</p>
+                        </div>
+                      )}
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={formData.logoUrl}
                         alt="Logo preview"
-                        className="max-w-full max-h-full object-contain"
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).style.display = 'none'
-                        }}
+                        className={`max-w-full max-h-full object-contain ${logoStatus === 'loaded' ? '' : 'hidden'}`}
+                        onLoad={() => setLogoStatus('loaded')}
+                        onError={() => setLogoStatus('error')}
                       />
                     </div>
                   )}

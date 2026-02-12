@@ -32,6 +32,7 @@ interface Brand {
   slug: string
   domain: string | null
   color: string
+  logo: string | null
   brandVoice: any
   targetAudiences: any[]
   goals: any
@@ -122,12 +123,30 @@ export default function BrandDetailPage() {
             </Link>
           </Button>
           <div className="flex items-center gap-3">
-            <div
-              className="w-12 h-12 rounded-lg flex items-center justify-center text-white font-bold text-xl"
-              style={{ backgroundColor: brand.color }}
-            >
-              {brand.name[0]}
-            </div>
+            {(brand.logo || brand.settings?.logoUrl) ? (
+              <div className="w-12 h-12 rounded-lg border bg-white dark:bg-gray-900 flex items-center justify-center overflow-hidden">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={brand.logo || brand.settings?.logoUrl}
+                  alt={`${brand.name} logo`}
+                  className="max-w-full max-h-full object-contain"
+                  onError={(e) => {
+                    // Fall back to initial on error
+                    const parent = (e.target as HTMLImageElement).parentElement
+                    if (parent) {
+                      parent.innerHTML = `<span class="text-xl font-bold" style="color: ${brand.color}">${brand.name[0]}</span>`
+                    }
+                  }}
+                />
+              </div>
+            ) : (
+              <div
+                className="w-12 h-12 rounded-lg flex items-center justify-center text-white font-bold text-xl"
+                style={{ backgroundColor: brand.color }}
+              >
+                {brand.name[0]}
+              </div>
+            )}
             <div>
               <h1 className="text-3xl font-bold tracking-tight">{brand.name}</h1>
               {brand.domain && (
