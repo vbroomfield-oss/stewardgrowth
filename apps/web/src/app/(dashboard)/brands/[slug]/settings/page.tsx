@@ -25,6 +25,7 @@ import {
   Image,
   Scan,
   Sparkles,
+  Upload,
 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -54,6 +55,7 @@ export default function BrandSettingsPage() {
   const [copiedKey, setCopiedKey] = useState(false)
   const [copiedId, setCopiedId] = useState(false)
   const [isAnalyzing, setIsAnalyzing] = useState(false)
+  const [isUploadingLogo, setIsUploadingLogo] = useState(false)
   const [logoStatus, setLogoStatus] = useState<'idle' | 'loading' | 'loaded' | 'error'>('idle')
 
   // Form state
@@ -176,6 +178,43 @@ export default function BrandSettingsPage() {
       })
     } finally {
       setIsDeleting(false)
+    }
+  }
+
+  const handleLogoUpload = async (file: File) => {
+    setIsUploadingLogo(true)
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('type', 'brand-logo')
+
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      })
+
+      const result = await response.json()
+
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to upload logo')
+      }
+
+      // Update form with new URL
+      setFormData(prev => ({ ...prev, logoUrl: result.url }))
+      setLogoStatus('loading')
+
+      toast({
+        title: 'Logo uploaded',
+        description: 'Your logo has been uploaded successfully.',
+      })
+    } catch (err: any) {
+      toast({
+        title: 'Upload failed',
+        description: err.message,
+        variant: 'destructive',
+      })
+    } finally {
+      setIsUploadingLogo(false)
     }
   }
 
@@ -475,17 +514,45 @@ export default function BrandSettingsPage() {
                   Brand Logo
                 </Label>
                 <div className="flex items-start gap-4">
-                  <div className="flex-1">
-                    <Input
-                      placeholder="https://example.com/logo.png"
-                      value={formData.logoUrl}
-                      onChange={(e) => {
-                        setFormData({ ...formData, logoUrl: e.target.value })
-                        setLogoStatus(e.target.value ? 'loading' : 'idle')
-                      }}
-                    />
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Paste the URL to your logo image. This will be used in AI-generated marketing content.
+                  <div className="flex-1 space-y-2">
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="https://example.com/logo.png"
+                        value={formData.logoUrl}
+                        onChange={(e) => {
+                          setFormData({ ...formData, logoUrl: e.target.value })
+                          setLogoStatus(e.target.value ? 'loading' : 'idle')
+                        }}
+                        className="flex-1"
+                      />
+                      <input
+                        type="file"
+                        accept="image/png,image/jpeg,image/webp,image/gif"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0]
+                          if (file) handleLogoUpload(file)
+                        }}
+                        className="hidden"
+                        id="logo-upload"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => document.getElementById('logo-upload')?.click()}
+                        disabled={isUploadingLogo}
+                      >
+                        {isUploadingLogo ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <>
+                            <Upload className="h-4 w-4 mr-2" />
+                            Upload
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Paste a URL or upload a PNG/JPG file (max 5MB). Used in AI-generated marketing content.
                     </p>
                   </div>
                   {formData.logoUrl && (
