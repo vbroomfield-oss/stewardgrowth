@@ -184,52 +184,93 @@ async function generateSuggestionsWithAI(description: string): Promise<{
   brandVoice: { tone: string[]; keywords: string[]; avoid: string[] }
   recommendedPlan: { name: string; price: number; features: string[]; reason: string }
   monthlyBudget: number
+  contentThemes?: string[]
+  hashtags?: { universal: string[]; vertical?: Record<string, string[]> }
+  ctaPhrases?: string[]
+  valuePropositions?: string[]
+  elevatorPitch?: string
+  competitorDifferentiators?: string[]
+  visualStyle?: { colors: string; imageStyle: string; mood: string }
 }> {
-  const systemPrompt = `You are a marketing assistant helping to set up a brand in StewardGrowth.
-Extract structured information from the user's product description and return it as JSON.
+  const systemPrompt = `You are a marketing assistant helping to set up a brand in StewardGrowth, a social media marketing platform.
 
-You MUST return valid JSON with this exact structure:
+Your job is to parse comprehensive marketing breakdowns and extract ALL relevant information into a structured format.
+
+The input may include:
+- Product name, tagline, description
+- Multiple target audiences/verticals with personas
+- Brand voice guidelines (tone, keywords, avoid words)
+- Content themes and post topics
+- Hashtag strategies
+- CTAs and value propositions
+- Visual style guidance
+
+You MUST return valid JSON with this structure (include all fields you can extract):
 {
   "suggestedName": "Product Name",
-  "suggestedSlug": "product-name",
+  "suggestedSlug": "product-name-lowercase-with-dashes",
   "suggestedTagline": "The product tagline",
-  "suggestedIndustry": "church-management|saas-b2b|saas-b2c|ecommerce|healthcare|fintech|education|other",
-  "suggestedDescription": "A 1-2 sentence description",
+  "suggestedIndustry": "church-management|saas-b2b|saas-b2c|ecommerce|healthcare|fintech|education|nonprofit|sports|community|membership|other",
+  "suggestedDescription": "A comprehensive 2-3 sentence description of the product",
   "primaryDomain": "domain.com",
   "appDomain": "app.domain.com",
   "marketingSite": "www.domain.com",
   "targetAudiences": [
     {
-      "name": "Audience Name",
-      "role": "Their Role/Title",
-      "painPoints": "What problems they face",
-      "goals": "What they want to achieve"
+      "name": "Audience/Persona Name",
+      "role": "Their Role/Title (e.g., Church Administrator, Executive Director)",
+      "painPoints": "Their key pain points in 1-2 sentences",
+      "goals": "What they want to achieve in 1-2 sentences"
     }
   ],
   "brandVoice": {
-    "tone": ["Tone1", "Tone2"],
-    "keywords": ["keyword1", "keyword2"],
+    "tone": ["Trait1", "Trait2", "Trait3"],
+    "keywords": ["keyword1", "keyword2", "keyword3"],
     "avoid": ["word1", "word2"]
+  },
+  "contentThemes": ["Theme 1", "Theme 2", "Theme 3", "Theme 4", "Theme 5", "Theme 6", "Theme 7"],
+  "hashtags": {
+    "universal": ["#hashtag1", "#hashtag2"],
+    "vertical": {
+      "churches": ["#ChurchTech", "#MinistryTools"],
+      "nonprofits": ["#NonprofitTech"]
+    }
+  },
+  "ctaPhrases": ["CTA 1", "CTA 2", "CTA 3"],
+  "valuePropositions": ["Value prop 1", "Value prop 2"],
+  "elevatorPitch": "The one-paragraph elevator pitch",
+  "competitorDifferentiators": ["Differentiator 1", "Differentiator 2"],
+  "visualStyle": {
+    "colors": "Primary and accent colors",
+    "imageStyle": "Authentic, professional, etc.",
+    "mood": "Connected, empowered, etc."
   },
   "recommendedPlan": {
     "name": "Growth",
     "price": 199,
-    "features": ["Feature 1", "Feature 2"],
+    "features": ["Feature 1", "Feature 2", "Feature 3"],
     "reason": "Why this plan fits"
   },
-  "monthlyBudget": 5000
+  "monthlyBudget": 3000
 }
 
-Parse ALL details from the user's description. If they provide specific values (name, domains, audiences, etc.), use those exact values. Only generate suggestions for missing fields.`
+IMPORTANT RULES:
+1. Extract EXACT VALUES from the input when provided (names, domains, personas, etc.)
+2. For multi-vertical products, include ALL target audiences from ALL verticals
+3. Combine hashtags from all verticals
+4. Extract ALL content themes mentioned
+5. Pull exact pain points and goals per persona when provided
+6. If the input has vertical-specific taglines, use the universal one for suggestedTagline
+7. For industry, pick the FIRST/PRIMARY vertical or use "other" for multi-vertical SaaS`
 
   try {
     const message = await anthropic.messages.create({
-      model: 'claude-3-5-haiku-20241022',
-      max_tokens: 2000,
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 4000,
       messages: [
         {
           role: 'user',
-          content: `Parse this product description and extract all brand details:\n\n${description}`,
+          content: `Parse this comprehensive marketing breakdown and extract ALL brand/product details into the JSON structure:\n\n${description}`,
         },
       ],
       system: systemPrompt,

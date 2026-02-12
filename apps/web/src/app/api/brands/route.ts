@@ -142,6 +142,14 @@ export async function POST(request: NextRequest) {
       linkedinBudget,
       // Other
       color,
+      // Extended AI-parsed fields
+      contentThemes,
+      hashtags,
+      ctaPhrases,
+      valuePropositions,
+      elevatorPitch,
+      competitorDifferentiators,
+      visualStyle,
     } = body
 
     // Validate required fields
@@ -221,6 +229,14 @@ export async function POST(request: NextRequest) {
             apiKey,
             trackingId,
           },
+          // Extended marketing fields for AI content generation
+          contentThemes: contentThemes || [],
+          hashtags: hashtags || {},
+          ctaPhrases: ctaPhrases || [],
+          valuePropositions: valuePropositions || [],
+          elevatorPitch: elevatorPitch || '',
+          competitorDifferentiators: competitorDifferentiators || [],
+          visualStyle: visualStyle || {},
         },
         isActive: true,
       },

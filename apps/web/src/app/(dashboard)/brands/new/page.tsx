@@ -118,6 +118,15 @@ export default function NewBrandPage() {
     // Tracking (will be set from API response)
     apiKey: '',
     trackingId: '',
+
+    // Extended fields from AI parsing
+    contentThemes: [] as string[],
+    hashtags: {} as { universal?: string[]; vertical?: Record<string, string[]> },
+    ctaPhrases: [] as string[],
+    valuePropositions: [] as string[],
+    elevatorPitch: '',
+    competitorDifferentiators: [] as string[],
+    visualStyle: { colors: '', imageStyle: '', mood: '' },
   })
 
   const updateForm = (field: string, value: any) => {
@@ -176,6 +185,12 @@ export default function NewBrandPage() {
           updateForm('avoidWords', s.brandVoice.avoid?.join(', ') || '')
         }
 
+        // Personality from elevator pitch or value props
+        if (s.elevatorPitch) {
+          updateForm('personality', s.elevatorPitch)
+          updateForm('elevatorPitch', s.elevatorPitch)
+        }
+
         // Target audiences - handle both string array and object array formats
         if (s.targetAudiences && Array.isArray(s.targetAudiences)) {
           if (typeof s.targetAudiences[0] === 'string') {
@@ -196,21 +211,43 @@ export default function NewBrandPage() {
           updateForm('monthlyBudget', s.monthlyBudget.toString())
         }
 
+        // Extended fields
+        if (s.contentThemes) updateForm('contentThemes', s.contentThemes)
+        if (s.hashtags) updateForm('hashtags', s.hashtags)
+        if (s.ctaPhrases) updateForm('ctaPhrases', s.ctaPhrases)
+        if (s.valuePropositions) updateForm('valuePropositions', s.valuePropositions)
+        if (s.competitorDifferentiators) updateForm('competitorDifferentiators', s.competitorDifferentiators)
+        if (s.visualStyle) updateForm('visualStyle', s.visualStyle)
+
         if (s.recommendedPlan) {
           setRecommendedPlan(s.recommendedPlan)
         }
 
-        // Build AI response message
-        let aiResponse = "Based on your description, I've set up your brand profile:\n\n"
-        aiResponse += `• **Name**: ${s.suggestedName || 'Not detected'}\n`
-        aiResponse += `• **Industry**: ${s.suggestedIndustry?.replace(/-/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()) || 'General SaaS'}\n`
-        aiResponse += `• **Tagline**: "${s.suggestedTagline || 'Not set'}"\n`
-        if (s.primaryDomain) aiResponse += `• **Domain**: ${s.primaryDomain}\n`
-        const audienceNames = s.targetAudiences?.map((a: any) => typeof a === 'string' ? a : a.name) || []
-        aiResponse += `• **Target Audiences**: ${audienceNames.join(', ') || 'Not set'}\n`
-        aiResponse += `• **Tone**: ${s.brandVoice?.tone?.join(', ') || 'Professional'}\n`
-        if (s.monthlyBudget) aiResponse += `• **Monthly Budget**: $${s.monthlyBudget}\n`
-        aiResponse += "\nI've pre-filled ALL wizard fields with these settings. Click **Continue to Wizard** to review and make any adjustments."
+        // Build AI response message with comprehensive details
+        let aiResponse = "I've parsed your comprehensive marketing breakdown and extracted:\n\n"
+        aiResponse += `**BRAND BASICS**\n`
+        aiResponse += `• Name: ${s.suggestedName || 'Not detected'}\n`
+        aiResponse += `• Tagline: "${s.suggestedTagline || 'Not set'}"\n`
+        aiResponse += `• Industry: ${s.suggestedIndustry?.replace(/-/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()) || 'Multi-vertical SaaS'}\n`
+        if (s.primaryDomain) aiResponse += `• Domain: ${s.primaryDomain}\n`
+        aiResponse += `\n**TARGET AUDIENCES** (${s.targetAudiences?.length || 0} personas)\n`
+        const audienceNames = s.targetAudiences?.slice(0, 5).map((a: any) => typeof a === 'string' ? a : a.name) || []
+        aiResponse += `${audienceNames.join(', ')}${s.targetAudiences?.length > 5 ? ` + ${s.targetAudiences.length - 5} more` : ''}\n`
+        aiResponse += `\n**BRAND VOICE**\n`
+        aiResponse += `• Tone: ${s.brandVoice?.tone?.join(', ') || 'Professional'}\n`
+        aiResponse += `• Keywords: ${s.brandVoice?.keywords?.slice(0, 5).join(', ') || 'Not set'}\n`
+        if (s.contentThemes?.length) {
+          aiResponse += `\n**CONTENT THEMES** (${s.contentThemes.length} themes)\n`
+          aiResponse += `${s.contentThemes.slice(0, 4).join(', ')}${s.contentThemes.length > 4 ? '...' : ''}\n`
+        }
+        if (s.valuePropositions?.length) {
+          aiResponse += `\n**VALUE PROPOSITIONS** (${s.valuePropositions.length})\n`
+        }
+        if (s.hashtags?.universal?.length) {
+          aiResponse += `\n**HASHTAGS**: ${s.hashtags.universal.slice(0, 5).join(' ')}...\n`
+        }
+        if (s.monthlyBudget) aiResponse += `\n**SUGGESTED BUDGET**: $${s.monthlyBudget}/month\n`
+        aiResponse += "\n✅ ALL fields have been pre-filled. Click **Continue to Wizard** to review."
 
         setChatMessages(prev => [...prev, { role: 'ai', content: aiResponse }])
       }
@@ -331,6 +368,14 @@ export default function NewBrandPage() {
           googleBudget: formData.googleBudget,
           metaBudget: formData.metaBudget,
           linkedinBudget: formData.linkedinBudget,
+          // Extended fields for AI content generation
+          contentThemes: formData.contentThemes,
+          hashtags: formData.hashtags,
+          ctaPhrases: formData.ctaPhrases,
+          valuePropositions: formData.valuePropositions,
+          elevatorPitch: formData.elevatorPitch,
+          competitorDifferentiators: formData.competitorDifferentiators,
+          visualStyle: formData.visualStyle,
         }),
       })
 
