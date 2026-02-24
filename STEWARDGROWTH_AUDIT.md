@@ -175,6 +175,52 @@
 
 ---
 
-## 6. Post-Fix Status
+## 6. Post-Fix Status (Updated Feb 24, 2026)
 
-_Updated after fixes are applied._
+### All Pages Final Status
+
+| Page | Status | Notes |
+|---|---|---|
+| `/` Dashboard | Working | Shows "Pending" with connect links for MRR/Leads until Stripe connected |
+| `/brands` | Working | Lists all 3 brands (StewardPro, StewardRing, Bfield Ministry) |
+| `/brands/new` | Working | Full brand creation wizard |
+| `/brands/[slug]` | Working | Brand detail with metrics |
+| `/brands/[slug]/settings` | Working | Logo, branding, API keys |
+| `/analytics` | Working | Shows empty state with tracking setup info |
+| `/analytics/events` | Working | Real event data from tracking SDK |
+| `/analytics/kpis` | Working | Shows connect-integrations banner |
+| `/analytics/attribution` | Working | Shows empty state |
+| `/seo` | Working | Shows setup-required banner with env var instructions |
+| `/content` | Working | Content creation hub |
+| `/content/create` | Working | AI content generation (OpenAI) |
+| `/ads` | Working | OAuth platform connections |
+| `/books` | Working | Book management, existing data preserved |
+| `/ai` | Working | Real AI chat (Anthropic), recommendations with brand filters |
+| `/ai/plans` | Working | Weekly plan generation per brand (Anthropic) |
+| `/calls` | Working | Shows Telnyx setup banner |
+| `/approvals` | Working | Content approval workflow |
+| `/reports` | Working | Report templates |
+| `/settings` | Working | Full API key management, shows connected services |
+| `/help` | Working | Static help content |
+| `/login` | Working | Supabase auth |
+| `/signup` | Working | Supabase auth |
+
+### What Was Fixed
+
+1. **Settings page** — Complete rebuild with API key management UI for all integrations
+2. **AI Chat** — Connected to real Anthropic API (was simulated/fake responses)
+3. **AI Recommendations** — New engine generating 7 brand-specific recommendations with brand context
+4. **Weekly Plans** — New generator creating 7-day action plans per brand using Anthropic
+5. **Dashboard metrics** — Show "Pending" with connect links instead of misleading $0 values
+6. **SEO page** — Replaced "Coming Soon" with setup-required banner and env var instructions
+7. **Calls page** — Added Telnyx setup banner
+8. **KPIs page** — Added analytics connection info
+9. **Content generation** — Fixed to pull brand voice from database (was hardcoded to 2 brands)
+10. **Brand voice** — Added StewardPro default voice, made all brands pull from DB
+
+### New API Routes Created
+
+- `POST /api/ai/chat` — Real AI chat using Anthropic Claude
+- `GET/POST /api/ai/recommendations` — AI recommendation engine
+- `GET/POST /api/ai/plans` — Weekly marketing plan generator
+- `GET/POST /api/settings` — API key management with org settings storage

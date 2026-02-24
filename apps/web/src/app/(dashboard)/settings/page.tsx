@@ -40,121 +40,55 @@ interface ApiKeyConfig {
 }
 
 const API_KEY_CONFIGS: ApiKeyConfig[] = [
+  // Priority: Keys you need to add soon
   {
-    key: 'ANTHROPIC_API_KEY',
-    label: 'Anthropic API Key',
-    description: 'Powers AI recommendations, weekly plans, and chat assistant',
-    placeholder: 'sk-ant-...',
-    category: 'ai',
+    key: 'STRIPE_SECRET_KEY',
+    label: 'Stripe Secret Key',
+    description: 'Revenue tracking for StewardPro + StewardRing subscriptions. Get from Stripe Dashboard > Developers > API Keys.',
+    placeholder: 'sk_live_...',
+    category: 'payments',
   },
   {
-    key: 'OPENAI_API_KEY',
-    label: 'OpenAI API Key',
-    description: 'Content generation, image creation (DALL-E), and content AI',
-    placeholder: 'sk-...',
-    category: 'ai',
+    key: 'TELNYX_API_KEY',
+    label: 'Telnyx API Key',
+    description: 'StewardRing call analytics. Copy from StewardRing Railway environment variables.',
+    placeholder: 'KEY...',
+    category: 'other',
   },
   {
     key: 'GOOGLE_ANALYTICS_MEASUREMENT_ID',
-    label: 'Google Analytics Measurement ID',
-    description: 'Track website analytics (e.g., G-XXXXXXXXXX)',
+    label: 'Google Analytics Property ID',
+    description: 'Track website analytics. Find in GA4 > Admin > Data Streams > Measurement ID.',
     placeholder: 'G-XXXXXXXXXX',
     category: 'analytics',
   },
   {
     key: 'GOOGLE_ANALYTICS_API_CREDENTIALS',
-    label: 'Google Analytics API Credentials (JSON)',
-    description: 'Service account JSON for pulling GA4 data',
+    label: 'Google Application Credentials (JSON)',
+    description: 'Service account JSON for pulling GA4 data. Create in Google Cloud Console > IAM > Service Accounts.',
     placeholder: '{"type":"service_account",...}',
     category: 'analytics',
   },
   {
     key: 'GOOGLE_SEARCH_CONSOLE_SITE_URL',
     label: 'Google Search Console Site URL',
-    description: 'Your verified site URL in Search Console',
+    description: 'Your verified site URL for SEO data. Add your site at search.google.com/search-console.',
     placeholder: 'https://stewardpro.app',
-    category: 'seo',
-  },
-  {
-    key: 'GOOGLE_ADS_CUSTOMER_ID',
-    label: 'Google Ads Customer ID',
-    description: 'Your Google Ads account ID',
-    placeholder: '123-456-7890',
-    category: 'ads',
-  },
-  {
-    key: 'META_ADS_ACCESS_TOKEN',
-    label: 'Meta Ads Access Token',
-    description: 'Facebook/Instagram Ads API access token',
-    placeholder: 'EAAxxxxxxx...',
-    category: 'ads',
-  },
-  {
-    key: 'META_ADS_ACCOUNT_ID',
-    label: 'Meta Ads Account ID',
-    description: 'Your Meta Ads account ID',
-    placeholder: 'act_1234567890',
-    category: 'ads',
-  },
-  {
-    key: 'AHREFS_API_KEY',
-    label: 'Ahrefs API Key',
-    description: 'SEO analysis, backlink checking, keyword research',
-    placeholder: 'ahrefs_...',
-    category: 'seo',
-  },
-  {
-    key: 'SEMRUSH_API_KEY',
-    label: 'SEMrush API Key',
-    description: 'Alternative to Ahrefs for SEO data',
-    placeholder: 'semrush_...',
-    category: 'seo',
-  },
-  {
-    key: 'STRIPE_SECRET_KEY',
-    label: 'Stripe Secret Key',
-    description: 'Revenue tracking for StewardPro + StewardRing subscriptions',
-    placeholder: 'sk_live_...',
-    category: 'payments',
-  },
-  {
-    key: 'RESEND_API_KEY',
-    label: 'Resend API Key',
-    description: 'Email notifications and automated digest emails',
-    placeholder: 're_...',
-    category: 'email',
-  },
-  {
-    key: 'SENDGRID_API_KEY',
-    label: 'SendGrid API Key',
-    description: 'Alternative to Resend for email sending',
-    placeholder: 'SG....',
-    category: 'email',
-  },
-  {
-    key: 'TELNYX_API_KEY',
-    label: 'Telnyx API Key',
-    description: 'StewardRing call analytics and tracking',
-    placeholder: 'KEY...',
-    category: 'other',
-  },
-  {
-    key: 'AMAZON_KDP',
-    label: 'Amazon KDP Credentials',
-    description: 'Book sales data import (placeholder for future integration)',
-    placeholder: 'Connection details...',
-    category: 'other',
+    category: 'analytics',
   },
 ]
 
+const COMING_SOON_KEYS = [
+  { label: 'Google Ads Customer ID', description: 'Ad campaign performance tracking' },
+  { label: 'Meta Ads Access Token', description: 'Facebook/Instagram ad analytics' },
+  { label: 'SEMrush API Key', description: 'SEO keyword research and analysis' },
+  { label: 'Amazon KDP Integration', description: 'Book sales data import' },
+]
+
 const CATEGORY_LABELS: Record<string, string> = {
-  ai: 'AI Services',
-  analytics: 'Analytics',
-  ads: 'Ad Platforms',
-  seo: 'SEO Tools',
+  analytics: 'Analytics & Search',
   payments: 'Payments & Revenue',
-  email: 'Email',
-  other: 'Other Integrations',
+  other: 'Communications',
 }
 
 export default function SettingsPage() {
@@ -267,11 +201,45 @@ export default function SettingsPage() {
               <div>
                 <p className="font-medium text-blue-900 dark:text-blue-300">API Key Management</p>
                 <p className="text-sm text-blue-700 dark:text-blue-400">
-                  Enter your API keys below to enable integrations. Keys are encrypted and stored securely in your organization settings.
+                  Enter your API keys below to enable integrations. Keys are stored securely in your organization settings.
+                  Keys marked "Connected via Vercel" are set as environment variables and work automatically.
                 </p>
               </div>
             </div>
           </div>
+
+          {/* Already Connected via Vercel Env Vars */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Check className="h-5 w-5 text-green-500" />
+                Connected Services (via Vercel)
+              </CardTitle>
+              <CardDescription>
+                These are configured as environment variables in your Vercel deployment
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {[
+                { name: 'Anthropic API (Claude)', key: 'ANTHROPIC_API_KEY', desc: 'AI recommendations, weekly plans, chat assistant' },
+                { name: 'OpenAI API', key: 'OPENAI_API_KEY', desc: 'Content generation, image creation (DALL-E)' },
+                { name: 'Resend Email', key: 'RESEND_API_KEY', desc: 'Email notifications and digest emails' },
+                { name: 'Supabase Auth & Storage', key: 'SUPABASE', desc: 'Authentication, file uploads, database' },
+                { name: 'Cron Jobs', key: 'CRON_SECRET', desc: 'Scheduled content generation and publishing' },
+              ].map((svc) => (
+                <div key={svc.key} className="flex items-center justify-between p-3 border border-green-200 bg-green-50/50 dark:border-green-900 dark:bg-green-950/20 rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <Check className="h-4 w-4 text-green-600 shrink-0" />
+                    <div>
+                      <p className="font-medium text-sm">{svc.name}</p>
+                      <p className="text-xs text-muted-foreground">{svc.desc}</p>
+                    </div>
+                  </div>
+                  <span className="text-xs text-green-700 dark:text-green-400 shrink-0">Connected</span>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
 
           {categories.map((category) => {
             const configs = API_KEY_CONFIGS.filter((c) => c.category === category)
@@ -419,6 +387,25 @@ export default function SettingsPage() {
               </Card>
             )
           })}
+
+          {/* Coming Soon */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg text-muted-foreground">Coming Soon</CardTitle>
+              <CardDescription>Future integrations being developed</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {COMING_SOON_KEYS.map((item) => (
+                <div key={item.label} className="flex items-center justify-between p-3 border border-dashed rounded-lg opacity-60">
+                  <div>
+                    <p className="font-medium text-sm">{item.label}</p>
+                    <p className="text-xs text-muted-foreground">{item.description}</p>
+                  </div>
+                  <span className="text-xs text-muted-foreground">Coming Soon</span>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
         </TabsContent>
 
         {/* Organization Tab */}

@@ -48,6 +48,7 @@ export default function AIPage() {
   const [recommendations, setRecommendations] = useState<Recommendation[]>([])
   const [recsLoading, setRecsLoading] = useState(false)
   const [generatingRecs, setGeneratingRecs] = useState(false)
+  const [selectedBrandFilter, setSelectedBrandFilter] = useState<string>('all')
   const [chatHistory, setChatHistory] = useState<Array<{ role: 'user' | 'ai'; message: string }>>([
     {
       role: 'ai',
@@ -127,14 +128,14 @@ export default function AIPage() {
     }
   }
 
-  const handleGenerateRecommendations = async () => {
+  const handleGenerateRecommendations = async (brandId?: string) => {
     setGeneratingRecs(true)
     try {
       const res = await fetch('/api/ai/recommendations', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({}),
+        body: JSON.stringify({ brandId }),
       })
 
       if (res.ok) {
@@ -236,7 +237,9 @@ export default function AIPage() {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={handleGenerateRecommendations}
+                    onClick={() => handleGenerateRecommendations(
+                      selectedBrandFilter === 'all' ? undefined : selectedBrandFilter
+                    )}
                     disabled={generatingRecs}
                   >
                     {generatingRecs ? (
@@ -254,9 +257,37 @@ export default function AIPage() {
                 </div>
               </CardHeader>
               <CardContent>
+                {/* Brand filter tabs */}
+                {brands.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mb-4">
+                    <Button
+                      variant={selectedBrandFilter === 'all' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setSelectedBrandFilter('all')}
+                    >
+                      All Brands
+                    </Button>
+                    {brands.map((brand) => (
+                      <Button
+                        key={brand.id}
+                        variant={selectedBrandFilter === brand.id ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setSelectedBrandFilter(brand.id)}
+                      >
+                        {brand.name}
+                      </Button>
+                    ))}
+                  </div>
+                )}
+
                 {recommendations.length > 0 ? (
                   <div className="space-y-3">
-                    {recommendations.slice(0, 6).map((rec) => {
+                    {recommendations
+                      .filter((rec) =>
+                        selectedBrandFilter === 'all' ? true : rec.brand?.slug === brands.find(b => b.id === selectedBrandFilter)?.slug
+                      )
+                      .slice(0, 10)
+                      .map((rec) => {
                       const Icon = typeIcons[rec.type] || Sparkles
                       return (
                         <div

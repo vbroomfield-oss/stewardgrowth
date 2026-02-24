@@ -194,35 +194,74 @@ export default function DashboardPage() {
         </Card>
       ) : (
         <>
-          {/* Key Metrics */}
+          {/* Key Metrics — shows pending state when integrations not connected */}
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <MetricCard
-              title="Total MRR"
-              value={data.metrics.totalMrr}
-              previousValue={data.metrics.previousMrr}
-              format="currency"
-              icon={DollarSign}
-            />
-            <MetricCard
-              title="Total Leads"
-              value={data.metrics.totalLeads}
-              previousValue={data.metrics.previousLeads}
-              icon={Users}
-            />
-            <MetricCard
-              title="Conversion Rate"
-              value={data.metrics.conversionRate}
-              previousValue={data.metrics.previousConversionRate}
-              format="percent"
-              icon={TrendingUp}
-            />
-            <MetricCard
-              title="Ad Spend"
-              value={data.metrics.totalAdSpend}
-              previousValue={data.metrics.previousAdSpend}
-              format="currency"
-              icon={Target}
-            />
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <DollarSign className="h-5 w-5 text-muted-foreground" />
+                </div>
+                <p className="text-sm text-muted-foreground">Total MRR</p>
+                <p className="text-lg text-muted-foreground/60 mt-1">Pending</p>
+                <Link href="/settings" className="text-xs text-primary hover:underline mt-1 inline-block">
+                  Connect Stripe to see live data
+                </Link>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <Users className="h-5 w-5 text-muted-foreground" />
+                </div>
+                <p className="text-sm text-muted-foreground">Total Leads</p>
+                {data.metrics.totalLeads > 0 ? (
+                  <p className="text-2xl font-bold mt-1">{data.metrics.totalLeads}</p>
+                ) : (
+                  <>
+                    <p className="text-lg text-muted-foreground/60 mt-1">Pending</p>
+                    <Link href="/analytics/events" className="text-xs text-primary hover:underline mt-1 inline-block">
+                      Install tracking to capture leads
+                    </Link>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <TrendingUp className="h-5 w-5 text-muted-foreground" />
+                </div>
+                <p className="text-sm text-muted-foreground">Conversion Rate</p>
+                {data.metrics.conversionRate > 0 ? (
+                  <p className="text-2xl font-bold mt-1">{data.metrics.conversionRate.toFixed(1)}%</p>
+                ) : (
+                  <>
+                    <p className="text-lg text-muted-foreground/60 mt-1">Pending</p>
+                    <span className="text-xs text-muted-foreground mt-1 inline-block">
+                      Calculated from tracked events
+                    </span>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <Target className="h-5 w-5 text-muted-foreground" />
+                </div>
+                <p className="text-sm text-muted-foreground">Ad Spend</p>
+                {data.metrics.totalAdSpend > 0 ? (
+                  <p className="text-2xl font-bold mt-1">${data.metrics.totalAdSpend.toLocaleString()}</p>
+                ) : (
+                  <>
+                    <p className="text-lg text-muted-foreground/60 mt-1">Pending</p>
+                    <Link href="/ads" className="text-xs text-primary hover:underline mt-1 inline-block">
+                      Connect ad platforms
+                    </Link>
+                  </>
+                )}
+              </CardContent>
+            </Card>
           </div>
 
           <div className="grid gap-6 lg:grid-cols-3">

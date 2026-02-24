@@ -78,30 +78,77 @@ export async function POST(req: Request) {
       const goals = brand.goals as Record<string, unknown> | null
       const budget = brand.budgetConstraints as Record<string, unknown> | null
 
-      const prompt = `You are a marketing strategist for "${brand.name}" (${brand.domain || 'no website yet'}).
+      // Brand-specific marketing guidance
+      let brandGuidance = ''
+      const slug = brand.slug?.toLowerCase() || brand.name.toLowerCase()
 
-Brand Details:
-- Name: ${brand.name}
-- Domain: ${brand.domain || 'Not set'}
+      if (slug.includes('stewardpro') || slug.includes('steward-pro')) {
+        brandGuidance = `
+BRAND CONTEXT: StewardPro (stewardpro.app) is a ministry project management SaaS.
+Target audience: churches, pastors, ministry administrators, nonprofit leaders.
+Competes with Asana and Monday.com but built specifically for ministry organizations.
+Focus recommendations on:
+- Church/ministry community outreach
+- LinkedIn and Facebook groups for pastors and church admins
+- SEO content targeting ministry management keywords (e.g., "church project management", "ministry task management software")
+- Partnership opportunities with church networks and denominations
+- Email campaigns to ministry leaders
+- Differentiating from generic tools like Asana/Monday`
+      } else if (slug.includes('stewardring') || slug.includes('steward-ring')) {
+        brandGuidance = `
+BRAND CONTEXT: StewardRing (stewardring.com) is an AI-powered business phone system with VoIP, SMS/MMS, and 24/7 AI Receptionist.
+Target audience: small businesses across 13+ verticals — churches, real estate agents, property managers, medical/dental offices, legal firms, automotive dealers, home service contractors, restaurants, salons.
+Competes with RingCentral, Grasshopper, Google Voice.
+Focus recommendations on:
+- Multi-vertical outreach (not just churches)
+- Local business communities and chambers of commerce
+- LinkedIn outreach to small business owners
+- Industry-specific content for each vertical
+- Highlighting the AI Receptionist as the KEY differentiator
+- Promo code PARTNER26 for 20% off forever
+- SEO keywords: "AI receptionist for small business", "business phone system", "AI answering service"`
+      } else if (slug.includes('bfield') || slug.includes('ministry') || slug.includes('broomfield')) {
+        brandGuidance = `
+BRAND CONTEXT: Bfield Ministry (vincentbroomfield.co) is Vincent Broomfield's ministry brand and author platform.
+Covers: (a) Amazon-published books — faith-based, ministry, and leadership titles — and (b) ministry/speaking/brand awareness content.
+Target audience: faith-based readers, church leaders, pastors, ministry community, Christian living readers.
+Focus recommendations on:
+- Amazon book promotion strategies (reviews, rank optimization, A+ content)
+- Book reviews and reader outreach campaigns
+- Ministry speaking and guest appearance opportunities
+- Social media content for faith-based audience
+- Email list building for ministry community
+- Cross-promotion between books and ministry platform`
+      }
+
+      const prompt = `You are a senior marketing strategist. Generate specific, actionable marketing recommendations for "${brand.name}" (${brand.domain || 'no website yet'}).
+
+${brandGuidance}
+
+Additional Brand Details:
 - Brand Voice: ${brandVoice ? JSON.stringify(brandVoice) : 'Not configured'}
 - Target Audiences: ${audiences ? JSON.stringify(audiences) : 'Not configured'}
 - Goals: ${goals ? JSON.stringify(goals) : 'Not configured'}
 - Budget: ${budget ? JSON.stringify(budget) : 'Not configured'}
 - Events tracked: ${brand._count.events}
-- Content posts: ${brand._count.contentPosts}
+- Content posts created: ${brand._count.contentPosts}
 
-Generate exactly 3 actionable marketing recommendations. For each, provide:
+Generate exactly 7 specific, actionable marketing recommendations. For each, provide:
 1. A clear title (under 60 chars)
-2. A detailed description (2-3 sentences) explaining WHY and HOW
-3. A category: one of SEO_OPPORTUNITY, CONTENT_IDEA, TRENDING_TOPIC, BUDGET_REALLOCATION, MARKET_INSIGHT, CREATIVE_REFRESH
-4. Priority: LOW, MEDIUM, or HIGH
-5. Estimated impact: brief phrase like "Could increase leads 20%"
+2. A detailed description (2-3 sentences) explaining EXACTLY what to do, why it matters, and expected impact
+3. Estimated time to complete (e.g., "30 minutes", "2 hours", "1 day")
+4. A category: one of SEO_OPPORTUNITY, CONTENT_IDEA, TRENDING_TOPIC, BUDGET_REALLOCATION, MARKET_INSIGHT, CREATIVE_REFRESH
+5. Priority: LOW, MEDIUM, or HIGH
+6. Estimated impact: brief phrase like "Could increase leads 20%"
+
+Be SPECIFIC — no generic advice. Reference the exact brand, product, and audience.
 
 Respond in JSON format:
 [
   {
     "title": "...",
     "description": "...",
+    "timeEstimate": "...",
     "category": "...",
     "priority": "...",
     "estimatedImpact": "..."
