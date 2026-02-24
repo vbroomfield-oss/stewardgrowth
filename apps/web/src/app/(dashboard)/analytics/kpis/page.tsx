@@ -78,6 +78,24 @@ export default function KPIsPage() {
       </div>
 
       {/* Empty State */}
+      {/* Setup Info */}
+      {brands.length > 0 && (
+        <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900 rounded-lg p-4">
+          <div className="flex items-start gap-3">
+            <LineChart className="h-5 w-5 text-blue-600 mt-0.5" />
+            <div className="flex-1">
+              <p className="font-medium text-blue-900 dark:text-blue-300">Connect Analytics to See Real Data</p>
+              <p className="text-sm text-blue-700 dark:text-blue-400 mt-1">
+                KPIs will populate automatically once you connect Google Analytics, Stripe, or start tracking events via the SDK. Configure integrations in Settings.
+              </p>
+              <Button variant="outline" size="sm" className="mt-2" asChild>
+                <Link href="/settings">Configure Integrations</Link>
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {brands.length === 0 ? (
         <Card className="border-dashed">
           <CardContent className="flex flex-col items-center justify-center py-16">

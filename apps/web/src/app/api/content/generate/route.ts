@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic'
 
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { db } from '@/lib/db'
 import {
   generateBlogPost,
   generateSocialPost,
@@ -12,7 +13,7 @@ import {
   type BrandVoice,
 } from '@/lib/ai/openai'
 
-// Default brand voices for Steward products
+// Default brand voices for Steward products (fallbacks)
 const BRAND_VOICES: Record<string, BrandVoice> = {
   stewardmax: {
     personality: ['helpful', 'professional', 'warm', 'trustworthy'],
@@ -40,6 +41,32 @@ const BRAND_VOICES: Record<string, BrandVoice> = {
     targetAudience: 'Church administrators, pastors, ministry leaders',
     industry: 'church_software',
   },
+  stewardpro: {
+    personality: ['helpful', 'professional', 'warm', 'trustworthy'],
+    doSay: [
+      'ministry management',
+      'church growth',
+      'streamline',
+      'community',
+      'stewardship',
+      'empower',
+    ],
+    dontSay: [
+      'cheap',
+      'basic',
+      'just',
+      'simple software',
+      'competitor names',
+    ],
+    valuePropositions: [
+      'All-in-one ministry project management',
+      'Built for ministry, not business',
+      'Affordable for churches of all sizes',
+      'Integrates with what you already use',
+    ],
+    targetAudience: 'Church administrators, pastors, ministry leaders',
+    industry: 'church_software',
+  },
   stewardring: {
     personality: ['modern', 'reliable', 'professional', 'innovative'],
     doSay: [
@@ -48,6 +75,7 @@ const BRAND_VOICES: Record<string, BrandVoice> = {
       'always connected',
       'seamless',
       'reliable',
+      'AI-powered',
     ],
     dontSay: [
       'old-fashioned',
@@ -55,14 +83,46 @@ const BRAND_VOICES: Record<string, BrandVoice> = {
       'complicated',
     ],
     valuePropositions: [
-      'Cloud phone system built for churches',
-      'Connect your congregation anywhere',
-      'Integrated with StewardMAX',
+      'AI-powered business phone system',
+      'Connect your team anywhere',
+      'Crystal clear cloud calling',
       'Save up to 60% on phone costs',
     ],
-    targetAudience: 'Church administrators, office managers, IT decision makers',
-    industry: 'church_software',
+    targetAudience: 'Small business owners, church administrators, office managers',
+    industry: 'business_phone',
   },
+}
+
+/**
+ * Build brand voice from database brand data, falling back to hardcoded defaults
+ */
+function buildBrandVoice(brand: { slug: string; name: string; brandVoice: unknown; targetAudiences: unknown }): BrandVoice {
+  // First check hardcoded defaults
+  const hardcoded = BRAND_VOICES[brand.slug.toLowerCase()]
+
+  // Then check database brand voice
+  const dbVoice = brand.brandVoice as Record<string, unknown> | null
+  const dbAudiences = brand.targetAudiences as Array<Record<string, unknown>> | null
+
+  if (dbVoice && Object.keys(dbVoice).length > 0) {
+    return {
+      personality: (dbVoice.personality as string[]) || hardcoded?.personality || ['professional'],
+      doSay: (dbVoice.keywords as string[]) || (dbVoice.doSay as string[]) || hardcoded?.doSay || [],
+      dontSay: (dbVoice.avoidWords as string[]) || (dbVoice.dontSay as string[]) || hardcoded?.dontSay || [],
+      valuePropositions: (dbVoice.valuePropositions as string[]) || hardcoded?.valuePropositions || [],
+      targetAudience: dbAudiences?.map((a) => a.name).join(', ') || hardcoded?.targetAudience || '',
+      industry: (dbVoice.industry as string) || hardcoded?.industry || '',
+    }
+  }
+
+  return hardcoded || {
+    personality: ['professional'],
+    doSay: [],
+    dontSay: [],
+    valuePropositions: [],
+    targetAudience: '',
+    industry: '',
+  }
 }
 
 /**
@@ -110,11 +170,34 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Get brand voice
-    const brandVoice = BRAND_VOICES[brandId.toLowerCase()]
+    // Try to get brand from database first for voice data
+    let brandVoice: BrandVoice | undefined
+    let brandName = brandId
+
+    try {
+      const brand = await db.saaSBrand.findFirst({
+        where: {
+          OR: [
+            { id: brandId },
+            { slug: brandId.toLowerCase() },
+          ],
+          deletedAt: null,
+        },
+        select: { slug: true, name: true, brandVoice: true, targetAudiences: true },
+      })
+
+      if (brand) {
+        brandVoice = buildBrandVoice(brand)
+        brandName = brand.name
+      } else {
+        brandVoice = BRAND_VOICES[brandId.toLowerCase()]
+      }
+    } catch {
+      brandVoice = BRAND_VOICES[brandId.toLowerCase()]
+    }
 
     const generationOptions: ContentGenerationOptions = {
-      brandName: brandId,
+      brandName,
       brandVoice,
       ...options,
     }

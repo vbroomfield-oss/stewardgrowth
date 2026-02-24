@@ -11,12 +11,18 @@ import {
   RefreshCw,
   Plus,
   Loader2,
+  Settings,
+  ExternalLink,
+  TrendingUp,
+  AlertCircle,
+  Link2,
 } from 'lucide-react'
 
 interface Brand {
   id: string
   name: string
   slug: string
+  domain: string | null
 }
 
 export default function SEOPage() {
@@ -58,12 +64,6 @@ export default function SEOPage() {
             Monitor rankings, fix issues, and discover opportunities
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" disabled>
-            <RefreshCw className="mr-2 h-4 w-4" />
-            Run Audit
-          </Button>
-        </div>
       </div>
 
       {/* Empty State */}
@@ -86,24 +86,95 @@ export default function SEOPage() {
           </CardContent>
         </Card>
       ) : (
-        <Card className="border-dashed">
-          <CardContent className="flex flex-col items-center justify-center py-16">
-            <div className="rounded-full bg-blue-500/10 p-4 mb-4">
-              <Search className="h-8 w-8 text-blue-500" />
+        <>
+          {/* Setup Required Banner */}
+          <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 rounded-lg p-4">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="h-5 w-5 text-amber-600 mt-0.5" />
+              <div className="flex-1">
+                <p className="font-medium text-amber-900 dark:text-amber-300">SEO Integration Setup Required</p>
+                <p className="text-sm text-amber-700 dark:text-amber-400 mt-1">
+                  To enable SEO monitoring, connect one of these services in Settings:
+                </p>
+                <ul className="text-sm text-amber-700 dark:text-amber-400 mt-2 space-y-1">
+                  <li className="flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                    Google Search Console — for ranking and indexing data
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                    Ahrefs or SEMrush — for keyword research and backlink analysis
+                  </li>
+                </ul>
+                <Button variant="outline" size="sm" className="mt-3" asChild>
+                  <Link href="/settings">
+                    <Settings className="mr-2 h-4 w-4" />
+                    Configure in Settings
+                  </Link>
+                </Button>
+              </div>
             </div>
-            <h3 className="text-xl font-semibold mb-2">SEO Tracking Coming Soon</h3>
-            <p className="text-muted-foreground text-center max-w-md mb-6">
-              SEO monitoring, keyword rankings, and technical audits will be available soon.
-              Your brands are configured and ready to track.
-            </p>
-            <div className="flex items-center gap-4 text-sm text-muted-foreground">
-              <span className="flex items-center gap-1">
-                <Globe className="h-4 w-4" />
-                {brands.length} brand{brands.length !== 1 ? 's' : ''} ready
-              </span>
-            </div>
-          </CardContent>
-        </Card>
+          </div>
+
+          {/* Brand Domains */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Your Brand Domains</CardTitle>
+              <CardDescription>Domains that will be tracked once SEO tools are connected</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {brands.map((brand) => (
+                  <div key={brand.id} className="flex items-center justify-between p-3 border rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <Globe className="h-5 w-5 text-muted-foreground" />
+                      <div>
+                        <p className="font-medium">{brand.name}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {brand.domain || 'No domain set'}
+                        </p>
+                      </div>
+                    </div>
+                    <span className="text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400">
+                      Awaiting connection
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* SEO Features Preview */}
+          <div className="grid md:grid-cols-3 gap-4">
+            <Card className="border-dashed">
+              <CardContent className="p-6 text-center">
+                <TrendingUp className="h-8 w-8 mx-auto mb-3 text-green-500 opacity-50" />
+                <p className="font-medium">Keyword Rankings</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Track your positions for target keywords across search engines
+                </p>
+              </CardContent>
+            </Card>
+            <Card className="border-dashed">
+              <CardContent className="p-6 text-center">
+                <Link2 className="h-8 w-8 mx-auto mb-3 text-blue-500 opacity-50" />
+                <p className="font-medium">Backlink Analysis</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Monitor your backlink profile and discover new opportunities
+                </p>
+              </CardContent>
+            </Card>
+            <Card className="border-dashed">
+              <CardContent className="p-6 text-center">
+                <AlertCircle className="h-8 w-8 mx-auto mb-3 text-orange-500 opacity-50" />
+                <p className="font-medium">Technical Audit</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Find and fix technical SEO issues affecting your rankings
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+        </>
       )}
 
       {/* Quick Links */}
@@ -114,7 +185,7 @@ export default function SEOPage() {
               <Search className="h-5 w-5 text-blue-500" />
               <div>
                 <p className="font-medium">AI Recommendations</p>
-                <p className="text-sm text-gray-500">Get AI-powered insights</p>
+                <p className="text-sm text-gray-500">Get AI-powered SEO insights</p>
               </div>
             </CardContent>
           </Card>

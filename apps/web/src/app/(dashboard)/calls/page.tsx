@@ -13,6 +13,7 @@ import {
   Download,
   Plus,
   Loader2,
+  ArrowRight,
 } from 'lucide-react'
 
 interface Brand {
@@ -96,6 +97,22 @@ export default function CallsPage() {
         </Card>
       ) : (
         <>
+          {/* Setup Banner */}
+          <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 rounded-lg p-4">
+            <div className="flex items-start gap-3">
+              <Phone className="h-5 w-5 text-amber-600 mt-0.5" />
+              <div className="flex-1">
+                <p className="font-medium text-amber-900 dark:text-amber-300">Call Tracking Setup Required</p>
+                <p className="text-sm text-amber-700 dark:text-amber-400 mt-1">
+                  Connect your Telnyx account (StewardRing) to start tracking calls and attributing them to marketing campaigns.
+                </p>
+                <a href="/settings" className="inline-flex items-center gap-1 text-sm text-amber-800 dark:text-amber-300 font-medium mt-2 hover:underline">
+                  Configure in Settings <ArrowRight className="h-3 w-3" />
+                </a>
+              </div>
+            </div>
+          </div>
+
           {/* Stats - Empty */}
           <div className="grid gap-4 md:grid-cols-4">
             <Card>
