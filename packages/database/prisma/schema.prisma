@@ -157,6 +157,9 @@ model SaaSBrand {
   isActive Boolean @default(true)
   settings Json?   @default("{}")
 
+  // Google Analytics — each brand has its own GA4 Measurement ID (e.g. G-XXXXXXXXXX)
+  ga4PropertyId String?
+
   // Relations
   events               MarketingEvent[]
   kpiSnapshots         KPISnapshot[]

@@ -67,8 +67,8 @@ const API_KEY_CONFIGS: ApiKeyConfig[] = [
   },
   {
     key: 'GOOGLE_ANALYTICS_MEASUREMENT_ID',
-    label: 'Google Analytics Property ID',
-    description: 'Track website analytics. Find in GA4 > Admin > Data Streams > Measurement ID.',
+    label: 'Google Analytics Property ID (Default Fallback)',
+    description: 'Fallback GA4 Measurement ID used when a brand does not have its own. Each brand can override this in Brand Settings > API Keys.',
     placeholder: 'G-XXXXXXXXXX',
     category: 'analytics',
   },

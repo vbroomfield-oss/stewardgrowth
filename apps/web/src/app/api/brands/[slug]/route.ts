@@ -39,6 +39,7 @@ export async function GET(
         approvalRules: true,
         isActive: true,
         settings: true,
+        ga4PropertyId: true,
         createdAt: true,
         updatedAt: true,
         _count: {
@@ -132,6 +133,7 @@ export async function PATCH(
         goals: body.goals ?? existingBrand.goals,
         budgetConstraints: body.budgetConstraints ?? existingBrand.budgetConstraints,
         settings: updatedSettings,
+        ...(body.ga4PropertyId !== undefined && { ga4PropertyId: body.ga4PropertyId || null }),
       },
     })
 

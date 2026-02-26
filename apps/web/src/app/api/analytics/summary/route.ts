@@ -1,5 +1,17 @@
 export const dynamic = 'force-dynamic'
 
+// TODO: Create a GA4 property for StewardGrowth itself in Google Analytics:
+//   1. Go to https://analytics.google.com → Admin → Create Property
+//   2. Property name: "StewardGrowth Platform"
+//   3. Create a Web data stream for the StewardGrowth dashboard domain
+//   4. Copy the Measurement ID (G-XXXXXXXXXX) and set it as the
+//      GOOGLE_ANALYTICS_MEASUREMENT_ID in the org-level Settings page,
+//      or directly in the StewardGrowth brand's ga4PropertyId field.
+//   5. For API access (server-side data pulls), create a service account in
+//      Google Cloud Console → IAM → Service Accounts, grant it "Viewer" on
+//      the GA4 property, and save the JSON credentials as
+//      GOOGLE_ANALYTICS_API_CREDENTIALS in Settings.
+
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { getUserWithOrganization } from '@/lib/auth/get-user-org'
@@ -27,17 +39,31 @@ export async function GET(request: NextRequest) {
     const range = searchParams.get('range') || '30d'
     const startDate = getDateRange(range)
 
-    // Get brands for this org
+    // Get brands for this org (include ga4PropertyId for per-brand GA4 integration)
     const brands = await db.saaSBrand.findMany({
       where: {
         organizationId: userOrg.organizationId,
         deletedAt: null,
         ...(brandSlug && brandSlug !== 'all' ? { slug: brandSlug } : {}),
       },
-      select: { id: true, name: true, slug: true },
+      select: { id: true, name: true, slug: true, ga4PropertyId: true },
     })
 
     const brandIds = brands.map(b => b.id)
+
+    // Resolve GA4 property IDs per brand — brand-level overrides the org-level fallback
+    const org = await db.organization.findUnique({
+      where: { id: userOrg.organizationId },
+      select: { settings: true },
+    })
+    const orgSettings = (org?.settings as Record<string, string>) || {}
+    const fallbackGa4Id = orgSettings.GOOGLE_ANALYTICS_MEASUREMENT_ID || null
+
+    // Map each brand to its effective GA4 property ID
+    const brandGa4Map = brands.reduce((acc, b) => {
+      acc[b.id] = b.ga4PropertyId || fallbackGa4Id
+      return acc
+    }, {} as Record<string, string | null>)
 
     if (brandIds.length === 0) {
       return NextResponse.json({
@@ -178,6 +204,9 @@ export async function GET(request: NextRequest) {
           count: s._count.utmSource,
         })),
         funnelData,
+        // GA4 property IDs per brand (brand-level overrides org-level fallback)
+        // When GA4 API integration is active, these IDs determine which property to query
+        ga4PropertyIds: brandGa4Map,
       },
     })
   } catch (error) {

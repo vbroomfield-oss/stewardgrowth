@@ -142,6 +142,8 @@ export async function POST(request: NextRequest) {
       linkedinBudget,
       // Other
       color,
+      // Google Analytics
+      ga4PropertyId,
       // Extended AI-parsed fields
       contentThemes,
       hashtags,
@@ -239,6 +241,7 @@ export async function POST(request: NextRequest) {
           visualStyle: visualStyle || {},
         },
         isActive: true,
+        ga4PropertyId: ga4PropertyId || null,
       },
     })
 
@@ -251,6 +254,7 @@ export async function POST(request: NextRequest) {
         domain: brand.domain,
         trackingId,
         apiKey,
+        ga4PropertyId: brand.ga4PropertyId,
         createdAt: brand.createdAt.toISOString(),
       },
     })

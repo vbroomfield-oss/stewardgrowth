@@ -39,6 +39,7 @@ interface Brand {
   industry: string
   brandVoice: any
   settings: any
+  ga4PropertyId: string | null
 }
 
 export default function BrandSettingsPage() {
@@ -68,6 +69,7 @@ export default function BrandSettingsPage() {
     currency: 'USD',
     brandVoicePersonality: '',
     logoUrl: '',
+    ga4PropertyId: '',
   })
 
   useEffect(() => {
@@ -94,6 +96,7 @@ export default function BrandSettingsPage() {
         currency: result.brand.settings?.currency || 'USD',
         brandVoicePersonality: result.brand.brandVoice?.personality || '',
         logoUrl,
+        ga4PropertyId: result.brand.ga4PropertyId || '',
       })
       if (logoUrl) {
         setLogoStatus('loading')
@@ -119,6 +122,7 @@ export default function BrandSettingsPage() {
           timezone: formData.timezone,
           currency: formData.currency,
           logoUrl: formData.logoUrl,
+          ga4PropertyId: formData.ga4PropertyId,
           brandVoice: {
             ...brand?.brandVoice,
             personality: formData.brandVoicePersonality,
@@ -632,6 +636,46 @@ export default function BrandSettingsPage() {
 
         {/* API Keys */}
         <TabsContent value="integrations">
+          {/* Google Analytics Integration */}
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle>Google Analytics</CardTitle>
+              <CardDescription>
+                Connect this brand to its own GA4 property for independent analytics tracking
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="ga4PropertyId">GA4 Measurement ID</Label>
+                <Input
+                  id="ga4PropertyId"
+                  placeholder="G-XXXXXXXXXX"
+                  value={formData.ga4PropertyId}
+                  onChange={(e) => setFormData({ ...formData, ga4PropertyId: e.target.value })}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Find this in GA4 &gt; Admin &gt; Data Streams &gt; your stream &gt; Measurement ID.
+                  Each brand should have its own GA4 property for isolated analytics.
+                </p>
+              </div>
+              <div className="flex justify-end">
+                <Button onClick={handleSave} disabled={isSaving} size="sm">
+                  {isSaving ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="mr-2 h-4 w-4" />
+                      Save
+                    </>
+                  )}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader>
               <CardTitle>API Keys</CardTitle>

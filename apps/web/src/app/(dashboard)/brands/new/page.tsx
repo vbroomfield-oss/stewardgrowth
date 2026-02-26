@@ -118,6 +118,7 @@ export default function NewBrandPage() {
     // Tracking (will be set from API response)
     apiKey: '',
     trackingId: '',
+    ga4PropertyId: '',
 
     // Extended fields from AI parsing
     contentThemes: [] as string[],
@@ -368,6 +369,8 @@ export default function NewBrandPage() {
           googleBudget: formData.googleBudget,
           metaBudget: formData.metaBudget,
           linkedinBudget: formData.linkedinBudget,
+          // Google Analytics
+          ga4PropertyId: formData.ga4PropertyId,
           // Extended fields for AI content generation
           contentThemes: formData.contentThemes,
           hashtags: formData.hashtags,
@@ -1277,6 +1280,22 @@ export default function NewBrandPage() {
                     </div>
                     <p className="text-sm text-green-600 dark:text-green-300">
                       Your tracking credentials are ready. Copy the snippet below and add it to your website.
+                    </p>
+                  </div>
+
+                  {/* GA4 Measurement ID — optional, can be added now or later in brand settings */}
+                  <div className="p-4 border rounded-lg space-y-2">
+                    <label className="text-sm font-medium block">GA4 Measurement ID (optional)</label>
+                    <input
+                      type="text"
+                      placeholder="G-XXXXXXXXXX"
+                      value={formData.ga4PropertyId}
+                      onChange={(e) => updateForm('ga4PropertyId', e.target.value)}
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-mono"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Enter this brand&apos;s GA4 Measurement ID to enable Google Analytics data.
+                      You can also set this later in Brand Settings &gt; API Keys.
                     </p>
                   </div>
 

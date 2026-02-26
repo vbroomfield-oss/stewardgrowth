@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic'
 
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { db } from '@/lib/db'
 import {
   calculateKPIs,
   generateKPISnapshot,
@@ -80,6 +81,22 @@ export async function GET(request: NextRequest) {
       )
     }
 
+    // Resolve the GA4 property ID for this brand (brand-level overrides org fallback)
+    // In production, this will be used to query the GA4 Data API for real metrics
+    const brand = await db.saaSBrand.findFirst({
+      where: { id: brandId },
+      select: { ga4PropertyId: true, organizationId: true },
+    })
+    let ga4PropertyId: string | null = brand?.ga4PropertyId || null
+    if (!ga4PropertyId && brand?.organizationId) {
+      const org = await db.organization.findUnique({
+        where: { id: brand.organizationId },
+        select: { settings: true },
+      })
+      const orgSettings = (org?.settings as Record<string, string>) || {}
+      ga4PropertyId = orgSettings.GOOGLE_ANALYTICS_MEASUREMENT_ID || null
+    }
+
     // Get mock data for development (in production, query database)
     const periodDays = {
       realtime: 1,
@@ -132,6 +149,7 @@ export async function GET(request: NextRequest) {
         current: currentSnapshot,
         previous: previousSnapshot,
         changes,
+        ga4PropertyId,
         lastUpdated: new Date().toISOString(),
         nextUpdate: new Date(Date.now() + ROLLUP_INTERVALS.REALTIME).toISOString(),
       },
