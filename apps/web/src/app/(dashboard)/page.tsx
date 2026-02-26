@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -61,6 +62,7 @@ export default function DashboardPage() {
   const [data, setData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const router = useRouter()
 
   useEffect(() => {
     async function fetchDashboardData() {
@@ -69,6 +71,12 @@ export default function DashboardPage() {
         const brandsRes = await fetch('/api/brands', { credentials: 'include' })
         if (!brandsRes.ok) throw new Error('Failed to load brands')
         const brandsData = await brandsRes.json()
+
+        // Redirect new users to onboarding if they have no brands
+        if ((!brandsData.brands || brandsData.brands.length === 0) && !sessionStorage.getItem('skip-onboarding')) {
+          router.push('/onboarding')
+          return
+        }
 
         // Transform brands to include metrics
         const brands: Brand[] = (brandsData.brands || []).map((brand: any) => ({

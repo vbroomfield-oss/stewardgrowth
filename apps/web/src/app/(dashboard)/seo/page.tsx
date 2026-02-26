@@ -1,217 +1,144 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import Link from 'next/link'
-import { Button } from '@/components/ui/button'
+import { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import {
   Search,
   Globe,
-  FileText,
-  RefreshCw,
-  Plus,
-  Loader2,
-  Settings,
-  ExternalLink,
   TrendingUp,
-  AlertCircle,
   Link2,
+  BarChart3,
+  FileText,
+  CheckCircle2,
+  Bell,
 } from 'lucide-react'
+import { toast } from '@/components/ui/use-toast'
 
-interface Brand {
-  id: string
-  name: string
-  slug: string
-  domain: string | null
-}
+const features = [
+  {
+    icon: Globe,
+    title: 'Technical SEO Audits',
+    description: 'Crawl your sites to identify broken links, missing meta tags, and performance issues',
+    color: 'blue',
+  },
+  {
+    icon: Search,
+    title: 'Keyword Tracking',
+    description: 'Monitor your rankings across target keywords and discover new opportunities',
+    color: 'green',
+  },
+  {
+    icon: TrendingUp,
+    title: 'Rank Monitoring',
+    description: 'Track position changes daily across Google Search for all your brands',
+    color: 'purple',
+  },
+  {
+    icon: Link2,
+    title: 'Backlink Analysis',
+    description: 'Monitor your backlink profile and find new link-building opportunities',
+    color: 'orange',
+  },
+  {
+    icon: BarChart3,
+    title: 'Google Search Console Integration',
+    description: 'Pull real impressions, clicks, and CTR data directly from GSC',
+    color: 'teal',
+  },
+  {
+    icon: FileText,
+    title: 'AI Content Recommendations',
+    description: 'Get AI-powered suggestions for content that will rank for your target keywords',
+    color: 'pink',
+  },
+]
 
 export default function SEOPage() {
-  const [brands, setBrands] = useState<Brand[]>([])
-  const [loading, setLoading] = useState(true)
+  const [email, setEmail] = useState('')
+  const [subscribed, setSubscribed] = useState(false)
 
-  useEffect(() => {
-    async function fetchBrands() {
-      try {
-        const res = await fetch('/api/brands', { credentials: 'include' })
-        if (res.ok) {
-          const data = await res.json()
-          setBrands(data.brands || [])
-        }
-      } catch (err) {
-        console.error('Failed to load brands:', err)
-      } finally {
-        setLoading(false)
-      }
+  const handleNotify = () => {
+    if (!email || !email.includes('@')) {
+      toast({ title: 'Enter a valid email', variant: 'destructive' })
+      return
     }
-    fetchBrands()
-  }, [])
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-      </div>
-    )
+    setSubscribed(true)
+    toast({ title: 'Subscribed', description: 'We\'ll notify you when SEO features launch.' })
   }
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">SEO Dashboard</h1>
-          <p className="text-muted-foreground">
-            Monitor rankings, fix issues, and discover opportunities
-          </p>
-        </div>
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
+          <Search className="h-8 w-8 text-green-500" />
+          SEO Automation
+        </h1>
+        <p className="text-muted-foreground">
+          Technical audits, keyword tracking, and ranking intelligence
+        </p>
       </div>
 
-      {/* Empty State */}
-      {brands.length === 0 ? (
-        <Card className="border-dashed">
-          <CardContent className="flex flex-col items-center justify-center py-16">
-            <div className="rounded-full bg-primary/10 p-4 mb-4">
-              <Search className="h-8 w-8 text-primary" />
-            </div>
-            <h3 className="text-xl font-semibold mb-2">No Brands Configured</h3>
-            <p className="text-muted-foreground text-center max-w-md mb-6">
-              Add a brand to start tracking SEO performance, keyword rankings, and technical issues.
-            </p>
-            <Button asChild size="lg">
-              <Link href="/brands/new">
-                <Plus className="mr-2 h-4 w-4" />
-                Add Your First Brand
-              </Link>
-            </Button>
-          </CardContent>
-        </Card>
-      ) : (
-        <>
-          {/* Setup Required Banner */}
-          <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 rounded-lg p-4">
-            <div className="flex items-start gap-3">
-              <AlertCircle className="h-5 w-5 text-amber-600 mt-0.5" />
-              <div className="flex-1">
-                <p className="font-medium text-amber-900 dark:text-amber-300">SEO Integration Setup Required</p>
-                <p className="text-sm text-amber-700 dark:text-amber-400 mt-1">
-                  To enable SEO monitoring, connect one of these services in Settings:
-                </p>
-                <ul className="text-sm text-amber-700 dark:text-amber-400 mt-2 space-y-1">
-                  <li className="flex items-center gap-2">
-                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-                    Google Search Console — for ranking and indexing data
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-                    Ahrefs or SEMrush — for keyword research and backlink analysis
-                  </li>
-                </ul>
-                <Button variant="outline" size="sm" className="mt-3" asChild>
-                  <Link href="/settings">
-                    <Settings className="mr-2 h-4 w-4" />
-                    Configure in Settings
-                  </Link>
-                </Button>
-              </div>
-            </div>
+      {/* Coming Soon Banner */}
+      <Card className="border-green-200 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20 dark:border-green-800">
+        <CardContent className="py-12 flex flex-col items-center text-center">
+          <div className="rounded-full bg-green-100 dark:bg-green-900/30 p-4 mb-4">
+            <Search className="h-10 w-10 text-green-600 dark:text-green-400" />
           </div>
+          <h2 className="text-2xl font-bold mb-2">SEO Features Coming Soon</h2>
+          <p className="text-muted-foreground max-w-lg mb-6">
+            We&apos;re building a comprehensive SEO suite that connects directly to Google Search Console,
+            tracks your rankings daily, and uses AI to recommend content improvements.
+          </p>
 
-          {/* Brand Domains */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Your Brand Domains</CardTitle>
-              <CardDescription>Domains that will be tracked once SEO tools are connected</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {brands.map((brand) => (
-                  <div key={brand.id} className="flex items-center justify-between p-3 border rounded-lg">
-                    <div className="flex items-center gap-3">
-                      <Globe className="h-5 w-5 text-muted-foreground" />
-                      <div>
-                        <p className="font-medium">{brand.name}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {brand.domain || 'No domain set'}
-                        </p>
-                      </div>
+          {subscribed ? (
+            <div className="flex items-center gap-2 text-green-600 dark:text-green-400">
+              <CheckCircle2 className="h-5 w-5" />
+              <span className="font-medium">You&apos;ll be notified when we launch!</span>
+            </div>
+          ) : (
+            <div className="flex gap-2 w-full max-w-sm">
+              <Input
+                type="email"
+                placeholder="your@email.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleNotify()}
+              />
+              <Button onClick={handleNotify}>
+                <Bell className="mr-2 h-4 w-4" />
+                Notify Me
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Feature Preview */}
+      <div>
+        <h3 className="text-lg font-semibold mb-4">What&apos;s Coming</h3>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {features.map((feature) => {
+            const Icon = feature.icon
+            return (
+              <Card key={feature.title} className="opacity-75">
+                <CardContent className="p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="p-2 bg-muted rounded-lg">
+                      <Icon className="h-5 w-5 text-muted-foreground" />
                     </div>
-                    <span className="text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400">
-                      Awaiting connection
-                    </span>
+                    <div>
+                      <p className="font-medium">{feature.title}</p>
+                      <p className="text-sm text-muted-foreground">{feature.description}</p>
+                    </div>
                   </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* SEO Features Preview */}
-          <div className="grid md:grid-cols-3 gap-4">
-            <Card className="border-dashed">
-              <CardContent className="p-6 text-center">
-                <TrendingUp className="h-8 w-8 mx-auto mb-3 text-green-500 opacity-50" />
-                <p className="font-medium">Keyword Rankings</p>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Track your positions for target keywords across search engines
-                </p>
-              </CardContent>
-            </Card>
-            <Card className="border-dashed">
-              <CardContent className="p-6 text-center">
-                <Link2 className="h-8 w-8 mx-auto mb-3 text-blue-500 opacity-50" />
-                <p className="font-medium">Backlink Analysis</p>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Monitor your backlink profile and discover new opportunities
-                </p>
-              </CardContent>
-            </Card>
-            <Card className="border-dashed">
-              <CardContent className="p-6 text-center">
-                <AlertCircle className="h-8 w-8 mx-auto mb-3 text-orange-500 opacity-50" />
-                <p className="font-medium">Technical Audit</p>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Find and fix technical SEO issues affecting your rankings
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-        </>
-      )}
-
-      {/* Quick Links */}
-      <div className="grid md:grid-cols-3 gap-4">
-        <Link href="/ai">
-          <Card className="hover:border-blue-500 transition-colors cursor-pointer">
-            <CardContent className="p-4 flex items-center gap-3">
-              <Search className="h-5 w-5 text-blue-500" />
-              <div>
-                <p className="font-medium">AI Recommendations</p>
-                <p className="text-sm text-gray-500">Get AI-powered SEO insights</p>
-              </div>
-            </CardContent>
-          </Card>
-        </Link>
-        <Link href="/analytics/events">
-          <Card className="hover:border-green-500 transition-colors cursor-pointer">
-            <CardContent className="p-4 flex items-center gap-3">
-              <Globe className="h-5 w-5 text-green-500" />
-              <div>
-                <p className="font-medium">Event Analytics</p>
-                <p className="text-sm text-gray-500">View traffic sources</p>
-              </div>
-            </CardContent>
-          </Card>
-        </Link>
-        <Link href="/content">
-          <Card className="hover:border-purple-500 transition-colors cursor-pointer">
-            <CardContent className="p-4 flex items-center gap-3">
-              <FileText className="h-5 w-5 text-purple-500" />
-              <div>
-                <p className="font-medium">Content Hub</p>
-                <p className="text-sm text-gray-500">Create SEO content</p>
-              </div>
-            </CardContent>
-          </Card>
-        </Link>
+                </CardContent>
+              </Card>
+            )
+          })}
+        </div>
       </div>
     </div>
   )

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -15,8 +15,12 @@ import {
   Download,
   Loader2,
   AlertCircle,
+  Code,
+  Copy,
+  CheckCircle2,
 } from 'lucide-react'
 import { type ChannelAttribution } from '@/lib/analytics/attribution'
+import { toast } from '@/components/ui/use-toast'
 
 interface Brand {
   id: string
@@ -24,11 +28,47 @@ interface Brand {
   slug: string
 }
 
+interface AnalyticsData {
+  pageViews: number
+  uniqueVisitors: number
+  sessions: number
+  leads: number
+  trials: number
+  conversions: number
+  revenue: number
+  adSpend: number
+  roas: number
+  ctr: number
+  cpa: number
+  eventsByDay: { date: string; count: number }[]
+  topPages: { page: string; views: number }[]
+  topSources: { source: string; count: number }[]
+  funnelData: { name: string; value: number }[]
+}
+
 export default function AnalyticsPage() {
   const [dateRange, setDateRange] = useState('30d')
   const [selectedBrand, setSelectedBrand] = useState('all')
   const [brands, setBrands] = useState<Brand[]>([])
   const [loading, setLoading] = useState(true)
+  const [analyticsData, setAnalyticsData] = useState<AnalyticsData | null>(null)
+  const [exporting, setExporting] = useState(false)
+  const [snippetCopied, setSnippetCopied] = useState(false)
+  const [showSnippet, setShowSnippet] = useState(false)
+
+  const fetchAnalytics = useCallback(async (brandSlug: string, range: string) => {
+    try {
+      const res = await fetch(`/api/analytics/summary?brandId=${brandSlug}&range=${range}`, { credentials: 'include' })
+      if (res.ok) {
+        const json = await res.json()
+        if (json.success) {
+          setAnalyticsData(json.data)
+        }
+      }
+    } catch (err) {
+      console.error('Failed to load analytics:', err)
+    }
+  }, [])
 
   useEffect(() => {
     async function fetchBrands() {
@@ -47,24 +87,60 @@ export default function AnalyticsPage() {
     fetchBrands()
   }, [])
 
-  // Empty state KPIs - will be populated from real event data
-  const kpis = {
-    pageViews: 0,
-    uniqueVisitors: 0,
-    sessions: 0,
-    leads: 0,
-    qualifiedLeads: 0,
-    trials: 0,
-    conversions: 0,
-    revenue: 0,
-    adSpend: 0,
-    roas: 0,
-    ctr: 0,
-    cpa: 0,
+  useEffect(() => {
+    fetchAnalytics(selectedBrand, dateRange)
+  }, [selectedBrand, dateRange, fetchAnalytics])
+
+  const handleExport = async () => {
+    setExporting(true)
+    try {
+      const res = await fetch(`/api/events?brandId=${selectedBrand !== 'all' ? brands.find(b => b.slug === selectedBrand)?.id : ''}&limit=500`, { credentials: 'include' })
+      if (!res.ok) throw new Error('Failed to fetch events')
+      const data = await res.json()
+
+      const events = data.events || []
+      if (events.length === 0) {
+        toast({ title: 'No data to export', description: 'No events found for the selected filters.' })
+        return
+      }
+
+      // Build CSV
+      const headers = ['Event', 'User', 'Brand', 'Timestamp', 'URL']
+      const rows = events.map((e: any) => [e.event, e.user, e.brand, e.timestamp, e.url || ''].map((v: string) => `"${(v || '').replace(/"/g, '""')}"`).join(','))
+      const csv = [headers.join(','), ...rows].join('\n')
+
+      // Download
+      const blob = new Blob([csv], { type: 'text/csv' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `stewardgrowth-analytics-${dateRange}.csv`
+      a.click()
+      URL.revokeObjectURL(url)
+
+      toast({ title: 'Exported', description: `${events.length} events exported to CSV.` })
+    } catch (err) {
+      toast({ title: 'Export failed', variant: 'destructive' })
+    } finally {
+      setExporting(false)
+    }
   }
 
-  // Empty funnel data
-  const funnelData = [
+  const handleCopySnippet = () => {
+    const appUrl = window.location.origin
+    const snippet = `<!-- StewardGrowth Analytics -->\n<script src="${appUrl}/sdk/sg.js"></script>\n<script>\n  sg('init', 'YOUR_BRAND_API_KEY');\n  sg('track', 'pageview');\n</script>`
+    navigator.clipboard.writeText(snippet)
+    setSnippetCopied(true)
+    setTimeout(() => setSnippetCopied(false), 2000)
+  }
+
+  const kpis = analyticsData || {
+    pageViews: 0, uniqueVisitors: 0, sessions: 0, leads: 0,
+    trials: 0, conversions: 0, revenue: 0, adSpend: 0,
+    roas: 0, ctr: 0, cpa: 0,
+  }
+
+  const funnelData = analyticsData?.funnelData || [
     { name: 'Page Views', value: 0 },
     { name: 'Engaged Visitors', value: 0 },
     { name: 'Leads Captured', value: 0 },
@@ -73,11 +149,7 @@ export default function AnalyticsPage() {
     { name: 'Converted', value: 0 },
   ]
 
-  // Empty attribution data
   const attributionData: ChannelAttribution[] = []
-
-  // Empty conversion paths
-  const conversionPaths: { path: string[]; count: number; pct: number }[] = []
 
   if (loading) {
     return (
@@ -86,6 +158,8 @@ export default function AnalyticsPage() {
       </div>
     )
   }
+
+  const hasData = analyticsData && (analyticsData.pageViews > 0 || analyticsData.leads > 0)
 
   return (
     <div className="space-y-6">
@@ -118,24 +192,49 @@ export default function AnalyticsPage() {
             <option value="90d">Last 90 days</option>
             <option value="12m">Last 12 months</option>
           </select>
-          <Button variant="outline" disabled>
-            <Download className="mr-2 h-4 w-4" />
+          <Button variant="outline" onClick={handleExport} disabled={exporting}>
+            {exporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
             Export
           </Button>
         </div>
       </div>
 
-      {/* No Data Notice */}
-      {brands.length > 0 && (
+      {/* Tracking Snippet */}
+      {brands.length > 0 && !hasData && (
         <Card className="border-blue-200 bg-blue-50/50 dark:border-blue-800 dark:bg-blue-900/20">
-          <CardContent className="p-4 flex items-start gap-3">
-            <AlertCircle className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-0.5" />
-            <div>
-              <p className="font-medium text-blue-900 dark:text-blue-100">No analytics data yet</p>
-              <p className="text-sm text-blue-700 dark:text-blue-300">
-                Analytics data will appear here once you install the tracking code on your brand domains and start receiving events.
-                Visit your brand settings to get the tracking snippet.
-              </p>
+          <CardContent className="p-4">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-0.5" />
+              <div className="flex-1">
+                <p className="font-medium text-blue-900 dark:text-blue-100">No analytics data yet</p>
+                <p className="text-sm text-blue-700 dark:text-blue-300 mb-3">
+                  Install the tracking snippet on your brand&apos;s website to start collecting data.
+                </p>
+                <Button size="sm" variant="outline" onClick={() => setShowSnippet(!showSnippet)}>
+                  <Code className="mr-2 h-4 w-4" />
+                  {showSnippet ? 'Hide' : 'Show'} Tracking Code
+                </Button>
+                {showSnippet && (
+                  <div className="mt-3 relative">
+                    <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg text-sm overflow-x-auto">
+{`<!-- StewardGrowth Analytics -->
+<script src="${typeof window !== 'undefined' ? window.location.origin : ''}/sdk/sg.js"></script>
+<script>
+  sg('init', 'YOUR_BRAND_API_KEY');
+  sg('track', 'pageview');
+</script>`}
+                    </pre>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="absolute top-2 right-2 text-gray-400 hover:text-white"
+                      onClick={handleCopySnippet}
+                    >
+                      {snippetCopied ? <CheckCircle2 className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                )}
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -160,63 +259,19 @@ export default function AnalyticsPage() {
 
       {/* KPI Overview */}
       <MetricGrid columns={5}>
-        <MetricCard
-          title="Page Views"
-          value={kpis.pageViews}
-          change={0}
-        />
-        <MetricCard
-          title="Unique Visitors"
-          value={kpis.uniqueVisitors}
-          change={0}
-        />
-        <MetricCard
-          title="Leads"
-          value={kpis.leads}
-          change={0}
-        />
-        <MetricCard
-          title="Revenue"
-          value={kpis.revenue}
-          format="currency"
-          change={0}
-        />
-        <MetricCard
-          title="ROAS"
-          value={kpis.roas}
-          format="decimal"
-          change={0}
-          changeLabel="vs target"
-        />
+        <MetricCard title="Page Views" value={kpis.pageViews} change={0} />
+        <MetricCard title="Unique Visitors" value={kpis.uniqueVisitors} change={0} />
+        <MetricCard title="Leads" value={kpis.leads} change={0} />
+        <MetricCard title="Revenue" value={kpis.revenue} format="currency" change={0} />
+        <MetricCard title="ROAS" value={kpis.roas} format="decimal" change={0} changeLabel="vs target" />
       </MetricGrid>
 
       {/* Secondary Metrics */}
       <MetricGrid columns={4}>
-        <MetricCard
-          title="Cost Per Acquisition"
-          value={kpis.cpa}
-          format="currency"
-          change={0}
-          trendIsPositive={false}
-        />
-        <MetricCard
-          title="Click-Through Rate"
-          value={kpis.ctr}
-          format="percent"
-          change={0}
-        />
-        <MetricCard
-          title="Ad Spend"
-          value={kpis.adSpend}
-          format="currency"
-          change={0}
-        />
-        <MetricCard
-          title="Trial Conversion"
-          value={kpis.trials > 0 ? (kpis.conversions / kpis.trials) * 100 : 0}
-          format="percent"
-          change={0}
-        />
+        <MetricCard title="Cost Per Acquisition" value={kpis.cpa} format="currency" change={0} trendIsPositive={false} />
+        <MetricCard title="Click-Through Rate" value={kpis.ctr} format="percent" change={0} />
+        <MetricCard title="Ad Spend" value={kpis.adSpend} format="currency" change={0} />
+        <MetricCard title="Trial Conversion" value={kpis.trials > 0 ? (kpis.conversions / kpis.trials) * 100 : 0} format="percent" change={0} />
       </MetricGrid>
 
       {/* Conversion Funnel */}
@@ -226,9 +281,7 @@ export default function AnalyticsPage() {
             <Target className="h-5 w-5 text-blue-500" />
             Conversion Funnel
           </CardTitle>
-          <CardDescription>
-            Track visitors through your marketing funnel
-          </CardDescription>
+          <CardDescription>Track visitors through your marketing funnel</CardDescription>
         </CardHeader>
         <CardContent>
           {funnelData.some(d => d.value > 0) ? (
@@ -250,9 +303,7 @@ export default function AnalyticsPage() {
             <BarChart3 className="h-5 w-5 text-purple-500" />
             Multi-Touch Attribution
           </CardTitle>
-          <CardDescription>
-            Understand how each channel contributes to conversions
-          </CardDescription>
+          <CardDescription>Understand how each channel contributes to conversions</CardDescription>
         </CardHeader>
         <CardContent>
           {attributionData.length > 0 ? (
@@ -262,63 +313,6 @@ export default function AnalyticsPage() {
               <BarChart3 className="h-12 w-12 mx-auto mb-4 opacity-50" />
               <p>No attribution data yet</p>
               <p className="text-sm mt-1">Connect your ad platforms and track conversions to see attribution</p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Conversion Paths */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <TrendingUp className="h-5 w-5 text-green-500" />
-            Top Conversion Paths
-          </CardTitle>
-          <CardDescription>
-            Most common channel sequences leading to conversions
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {conversionPaths.length > 0 ? (
-            <div className="space-y-3">
-              {conversionPaths.map((path, index) => (
-                <div
-                  key={index}
-                  className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg"
-                >
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-gray-500 w-6">
-                      #{index + 1}
-                    </span>
-                    <div className="flex items-center gap-1">
-                      {path.path.map((channel, idx) => (
-                        <span key={idx} className="flex items-center">
-                          <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 rounded capitalize">
-                            {channel.replace('_', ' ')}
-                          </span>
-                          {idx < path.path.length - 1 && (
-                            <ArrowUpRight className="h-3 w-3 mx-1 text-gray-400" />
-                          )}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <span className="text-sm font-medium">
-                      {path.count} conversions
-                    </span>
-                    <span className="text-sm text-gray-500">
-                      {path.pct.toFixed(1)}%
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-12 text-muted-foreground">
-              <TrendingUp className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>No conversion paths yet</p>
-              <p className="text-sm mt-1">Paths will appear as visitors convert through multiple channels</p>
             </div>
           )}
         </CardContent>
@@ -352,15 +346,15 @@ export default function AnalyticsPage() {
             </CardContent>
           </Card>
         </Link>
-        <Link href="/analytics/reports">
+        <Link href="/analytics/kpis">
           <Card className="hover:border-green-500 transition-colors cursor-pointer">
             <CardContent className="p-4 flex items-center gap-3">
               <div className="p-2 bg-green-100 dark:bg-green-900 rounded-lg">
                 <TrendingUp className="h-5 w-5 text-green-600 dark:text-green-400" />
               </div>
               <div>
-                <p className="font-medium">Custom Reports</p>
-                <p className="text-sm text-gray-500">Build and schedule reports</p>
+                <p className="font-medium">KPI Dashboard</p>
+                <p className="text-sm text-gray-500">Weekly and monthly KPIs</p>
               </div>
             </CardContent>
           </Card>

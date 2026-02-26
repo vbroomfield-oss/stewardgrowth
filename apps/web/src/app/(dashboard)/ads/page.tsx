@@ -20,7 +20,9 @@ import {
   CheckCircle,
   XCircle,
   ExternalLink,
+  AlertTriangle,
 } from 'lucide-react'
+import { toast } from '@/components/ui/use-toast'
 
 interface Brand {
   id: string
@@ -37,6 +39,8 @@ interface PlatformConnection {
   accountName: string | null
   lastSyncAt: string | null
 }
+
+type PlatformConfig = Record<string, boolean>
 
 const PLATFORMS = [
   { id: 'linkedin', name: 'LinkedIn', color: 'text-sky-600', enabled: true },
@@ -56,6 +60,7 @@ function AdsPageContent() {
   const [selectedBrand, setSelectedBrand] = useState<string>('')
   const [loading, setLoading] = useState(true)
   const [connecting, setConnecting] = useState<string | null>(null)
+  const [platformConfig, setPlatformConfig] = useState<PlatformConfig>({})
 
   // Check for success/error messages
   const success = searchParams.get('success')
@@ -68,9 +73,10 @@ function AdsPageContent() {
   async function fetchData() {
     try {
       setLoading(true)
-      const [brandsRes, platformsRes] = await Promise.all([
+      const [brandsRes, platformsRes, configRes] = await Promise.all([
         fetch('/api/brands', { credentials: 'include' }),
         fetch('/api/platforms', { credentials: 'include' }),
+        fetch('/api/platforms/config', { credentials: 'include' }),
       ])
 
       if (brandsRes.ok) {
@@ -85,6 +91,11 @@ function AdsPageContent() {
       if (platformsRes.ok) {
         const data = await platformsRes.json()
         setConnections(data.data || [])
+      }
+
+      if (configRes.ok) {
+        const data = await configRes.json()
+        setPlatformConfig(data.platforms || {})
       }
     } catch (err) {
       console.error('Failed to load data:', err)
@@ -102,9 +113,20 @@ function AdsPageContent() {
 
   function handleConnect(platform: string) {
     if (!selectedBrand) {
-      alert('Please select a brand first')
+      toast({ title: 'No brand selected', description: 'Please select a brand first', variant: 'destructive' })
       return
     }
+
+    // Check if platform is configured
+    if (!platformConfig[platform]) {
+      toast({
+        title: 'Setup Required',
+        description: `${platform.charAt(0).toUpperCase() + platform.slice(1)} OAuth credentials are not configured. Add the API keys in your environment variables to enable this integration.`,
+        variant: 'destructive',
+      })
+      return
+    }
+
     setConnecting(platform)
     window.location.href = `/api/oauth/${platform}/authorize?brandId=${selectedBrand}`
   }
@@ -121,11 +143,11 @@ function AdsPageContent() {
       if (res.ok) {
         await fetchData()
       } else {
-        alert('Failed to disconnect platform')
+        toast({ title: 'Error', description: 'Failed to disconnect platform', variant: 'destructive' })
       }
     } catch (err) {
       console.error('Error disconnecting:', err)
-      alert('Failed to disconnect platform')
+      toast({ title: 'Error', description: 'Failed to disconnect platform', variant: 'destructive' })
     }
   }
 
@@ -211,6 +233,7 @@ function AdsPageContent() {
                 {PLATFORMS.map((platform) => {
                   const connection = getConnectionStatus(platform.id)
                   const isConnected = connection?.status === 'CONNECTED'
+                  const isConfigured = platformConfig[platform.id] ?? false
 
                   return (
                     <div
@@ -223,9 +246,14 @@ function AdsPageContent() {
                         <span className={`font-medium ${platform.color}`}>
                           {platform.name}
                         </span>
-                        {isConnected && (
+                        {isConnected ? (
                           <CheckCircle className="h-4 w-4 text-green-600" />
-                        )}
+                        ) : !isConfigured ? (
+                          <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">
+                            <AlertTriangle className="h-3 w-3" />
+                            Setup Required
+                          </span>
+                        ) : null}
                       </div>
 
                       {isConnected ? (
@@ -250,7 +278,11 @@ function AdsPageContent() {
                       ) : (
                         <>
                           <p className="text-xs text-muted-foreground mb-3">
-                            {platform.enabled ? 'Not connected' : 'Coming soon'}
+                            {!isConfigured
+                              ? 'OAuth credentials not configured'
+                              : platform.enabled
+                                ? 'Not connected'
+                                : 'Coming soon'}
                           </p>
                           <Button
                             variant="outline"
@@ -261,6 +293,11 @@ function AdsPageContent() {
                           >
                             {connecting === platform.id ? (
                               <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : !isConfigured ? (
+                              <>
+                                <AlertTriangle className="mr-2 h-3 w-3" />
+                                Setup Required
+                              </>
                             ) : (
                               <>
                                 {platform.enabled ? 'Connect' : 'Coming Soon'}

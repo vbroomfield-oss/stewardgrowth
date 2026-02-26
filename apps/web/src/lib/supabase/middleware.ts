@@ -8,13 +8,12 @@ export async function updateSession(request: NextRequest) {
     },
   })
 
-  // Skip Supabase session management if not configured (local development)
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
   if (!supabaseUrl || !supabaseKey || supabaseUrl === 'your-supabase-url') {
     // Return response without auth for local development
-    return response
+    return { response, user: null }
   }
 
   try {
@@ -64,12 +63,10 @@ export async function updateSession(request: NextRequest) {
       }
     )
 
-    // Refresh session if expired
-    await supabase.auth.getUser()
+    const { data: { user } } = await supabase.auth.getUser()
+    return { response, user }
   } catch (error) {
-    // Silently fail in development - auth not configured
     console.warn('Supabase auth not configured')
+    return { response, user: null }
   }
-
-  return response
 }

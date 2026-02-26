@@ -25,6 +25,7 @@ import {
   AlertCircle,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { toast } from '@/components/ui/use-toast'
 
 type ContentType = 'blog' | 'social' | 'email' | 'ad'
 type Platform = 'twitter' | 'linkedin' | 'facebook' | 'instagram' | 'google' | 'meta'
@@ -72,6 +73,7 @@ function CreateContentPageContent() {
   const [generating, setGenerating] = useState(false)
   const [generatedContent, setGeneratedContent] = useState<string | null>(null)
   const [alternates, setAlternates] = useState<string[]>([])
+  const [isSaving, setIsSaving] = useState(false)
 
   useEffect(() => {
     async function fetchBrands() {
@@ -137,13 +139,67 @@ function CreateContentPageContent() {
     }
   }
 
-  const handleSaveAsDraft = () => {
-    alert('Content saved as draft!')
+  const handleSaveAsDraft = async () => {
+    if (!generatedContent || !brand) return
+    setIsSaving(true)
+    try {
+      const response = await fetch('/api/content/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          brandId: brand,
+          title: topic,
+          content: generatedContent,
+          platforms: platform ? [platform] : [],
+          status: 'DRAFT',
+          aiGenerated: true,
+          aiPrompt: topic,
+          aiModel: 'gpt-4o',
+        }),
+      })
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || 'Failed to save')
+      }
+      toast({ title: 'Saved as draft', description: 'Your content has been saved.' })
+    } catch (error: any) {
+      toast({ title: 'Save failed', description: error.message, variant: 'destructive' })
+    } finally {
+      setIsSaving(false)
+    }
   }
 
-  const handleSubmitForApproval = () => {
-    alert('Content submitted for approval!')
-    router.push('/approvals')
+  const handleSubmitForApproval = async () => {
+    if (!generatedContent || !brand) return
+    setIsSaving(true)
+    try {
+      const response = await fetch('/api/content/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          brandId: brand,
+          title: topic,
+          content: generatedContent,
+          platforms: platform ? [platform] : [],
+          status: 'AWAITING_APPROVAL',
+          aiGenerated: true,
+          aiPrompt: topic,
+          aiModel: 'gpt-4o',
+        }),
+      })
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || 'Failed to submit')
+      }
+      toast({ title: 'Submitted for approval', description: 'Content has been sent for review.' })
+      router.push('/approvals')
+    } catch (error: any) {
+      toast({ title: 'Submit failed', description: error.message, variant: 'destructive' })
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   if (loadingBrands) {
@@ -418,12 +474,12 @@ function CreateContentPageContent() {
           {/* Action Buttons */}
           {generatedContent && (
             <div className="flex gap-3">
-              <Button variant="outline" className="flex-1" onClick={handleSaveAsDraft}>
-                <Save className="mr-2 h-4 w-4" />
+              <Button variant="outline" className="flex-1" onClick={handleSaveAsDraft} disabled={isSaving}>
+                {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                 Save as Draft
               </Button>
-              <Button className="flex-1" onClick={handleSubmitForApproval}>
-                <Send className="mr-2 h-4 w-4" />
+              <Button className="flex-1" onClick={handleSubmitForApproval} disabled={isSaving}>
+                {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
                 Submit for Approval
               </Button>
             </div>

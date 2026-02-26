@@ -20,8 +20,11 @@ import {
   Save,
   Shield,
   Trash2,
+  Send,
+  AlertTriangle,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { toast } from '@/components/ui/use-toast'
 
 interface UserData {
   id: string
@@ -37,6 +40,13 @@ interface ApiKeyConfig {
   description: string
   placeholder: string
   category: 'ai' | 'analytics' | 'ads' | 'seo' | 'payments' | 'email' | 'other'
+}
+
+interface CreatedApiKey {
+  id: string
+  name: string
+  keyPrefix: string
+  createdAt: string
 }
 
 const API_KEY_CONFIGS: ApiKeyConfig[] = [
@@ -101,6 +111,19 @@ export default function SettingsPage() {
   const [showValues, setShowValues] = useState<Record<string, boolean>>({})
   const [saveSuccess, setSaveSuccess] = useState<string | null>(null)
 
+  // 7A: Invite Team Member state
+  const [showInviteForm, setShowInviteForm] = useState(false)
+  const [inviteEmail, setInviteEmail] = useState('')
+  const [inviting, setInviting] = useState(false)
+
+  // 7B: Create API Key state
+  const [showApiKeyForm, setShowApiKeyForm] = useState(false)
+  const [apiKeyName, setApiKeyName] = useState('')
+  const [creatingKey, setCreatingKey] = useState(false)
+  const [newApiKey, setNewApiKey] = useState<string | null>(null)
+  const [createdKeys, setCreatedKeys] = useState<CreatedApiKey[]>([])
+  const [keyCopied, setKeyCopied] = useState(false)
+
   useEffect(() => {
     async function fetchData() {
       try {
@@ -150,10 +173,10 @@ export default function SettingsPage() {
         setTimeout(() => setSaveSuccess(null), 3000)
       } else {
         const data = await res.json()
-        alert(data.error || 'Failed to save')
+        toast({ title: 'Error', description: data.error || 'Failed to save', variant: 'destructive' })
       }
     } catch (err) {
-      alert('Failed to save API key')
+      toast({ title: 'Error', description: 'Failed to save API key', variant: 'destructive' })
     } finally {
       setSaving(null)
     }
@@ -162,6 +185,121 @@ export default function SettingsPage() {
   async function handleRemoveKey(key: string) {
     if (!confirm(`Remove ${key}? This will disable the integration.`)) return
     await handleSaveKey(key, '')
+  }
+
+  // 7A: Send team invite
+  async function handleSendInvite() {
+    if (!inviteEmail || !inviteEmail.includes('@')) {
+      toast({ title: 'Invalid email', description: 'Please enter a valid email address', variant: 'destructive' })
+      return
+    }
+
+    setInviting(true)
+    try {
+      const res = await fetch('/api/team/invite', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ email: inviteEmail }),
+      })
+
+      const data = await res.json()
+
+      if (res.ok) {
+        toast({ title: 'Invitation sent', description: `An invite has been sent to ${inviteEmail}` })
+        setInviteEmail('')
+        setShowInviteForm(false)
+      } else {
+        toast({ title: 'Error', description: data.error || 'Failed to send invitation', variant: 'destructive' })
+      }
+    } catch (err) {
+      toast({ title: 'Error', description: 'Failed to send invitation', variant: 'destructive' })
+    } finally {
+      setInviting(false)
+    }
+  }
+
+  // 7B: Create API key
+  async function handleCreateApiKey() {
+    if (!apiKeyName.trim()) {
+      toast({ title: 'Name required', description: 'Please enter a name for the API key', variant: 'destructive' })
+      return
+    }
+
+    setCreatingKey(true)
+    try {
+      const res = await fetch('/api/keys/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ name: apiKeyName.trim() }),
+      })
+
+      const data = await res.json()
+
+      if (res.ok) {
+        setNewApiKey(data.key)
+        setCreatedKeys((prev) => [...prev, data.apiKey])
+        setApiKeyName('')
+        setShowApiKeyForm(false)
+        toast({ title: 'API key created', description: 'Make sure to copy your key now. It will not be shown again.' })
+      } else {
+        toast({ title: 'Error', description: data.error || 'Failed to create API key', variant: 'destructive' })
+      }
+    } catch (err) {
+      toast({ title: 'Error', description: 'Failed to create API key', variant: 'destructive' })
+    } finally {
+      setCreatingKey(false)
+    }
+  }
+
+  // 7C: Upgrade plan
+  async function handleUpgradePlan() {
+    const stripeConfigured = settings['STRIPE_SECRET_KEY']?.isSet
+    if (!stripeConfigured) {
+      toast({
+        title: 'Stripe not configured',
+        description: 'Configure Stripe in environment variables to enable billing',
+        variant: 'destructive',
+      })
+      return
+    }
+
+    // Stripe is configured — redirect to checkout
+    try {
+      const res = await fetch('/api/billing/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+      })
+
+      const data = await res.json()
+
+      if (res.ok && data.url) {
+        window.location.href = data.url
+      } else {
+        toast({ title: 'Error', description: data.error || 'Failed to start checkout', variant: 'destructive' })
+      }
+    } catch (err) {
+      toast({ title: 'Error', description: 'Failed to start checkout session', variant: 'destructive' })
+    }
+  }
+
+  // 7D: Add funds
+  function handleAddFunds() {
+    toast({
+      title: 'Stripe required',
+      description: 'Marketing fund deposits require a connected Stripe account. Configure Stripe in Settings > Integrations to enable this feature.',
+    })
+  }
+
+  // Copy to clipboard helper
+  function copyToClipboard(text: string) {
+    navigator.clipboard.writeText(text).then(() => {
+      setKeyCopied(true)
+      setTimeout(() => setKeyCopied(false), 2000)
+      toast({ title: 'Copied', description: 'API key copied to clipboard' })
+    })
   }
 
   if (loading) {
@@ -461,10 +599,53 @@ export default function SettingsPage() {
                   </div>
                 )}
               </div>
-              <Button className="mt-4" disabled>
-                <Plus className="mr-2 h-4 w-4" />
-                Invite Team Member
-              </Button>
+
+              {/* Invite Form */}
+              {showInviteForm ? (
+                <div className="mt-4 p-4 border border-dashed rounded-lg space-y-3">
+                  <label className="text-sm font-medium block">Email address</label>
+                  <div className="flex gap-2">
+                    <Input
+                      type="email"
+                      placeholder="colleague@example.com"
+                      value={inviteEmail}
+                      onChange={(e) => setInviteEmail(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && inviteEmail.includes('@')) {
+                          handleSendInvite()
+                        }
+                      }}
+                      autoFocus
+                      disabled={inviting}
+                    />
+                    <Button onClick={handleSendInvite} disabled={inviting || !inviteEmail.includes('@')}>
+                      {inviting ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <>
+                          <Send className="mr-2 h-4 w-4" />
+                          Send Invite
+                        </>
+                      )}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      onClick={() => {
+                        setShowInviteForm(false)
+                        setInviteEmail('')
+                      }}
+                      disabled={inviting}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <Button className="mt-4" onClick={() => setShowInviteForm(true)}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Invite Team Member
+                </Button>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -495,7 +676,7 @@ export default function SettingsPage() {
               <p className="text-sm text-muted-foreground mt-4">
                 Upgrade to unlock advanced features, more brands, and premium support.
               </p>
-              <Button className="mt-4" disabled>
+              <Button className="mt-4" onClick={handleUpgradePlan}>
                 Upgrade Plan
               </Button>
             </CardContent>
@@ -523,7 +704,7 @@ export default function SettingsPage() {
                   <p className="text-2xl font-bold">$0</p>
                 </div>
               </div>
-              <Button className="mt-4" disabled>
+              <Button className="mt-4" onClick={handleAddFunds}>
                 <CreditCard className="mr-2 h-4 w-4" />
                 Add Funds
               </Button>
@@ -541,15 +722,112 @@ export default function SettingsPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="text-center py-8 text-muted-foreground">
-                <Key className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>No API keys created yet</p>
-                <p className="text-sm mt-1">Create an API key to start tracking events</p>
-              </div>
-              <Button className="mt-4" disabled>
-                <Plus className="mr-2 h-4 w-4" />
-                Create API Key
-              </Button>
+              {/* Show newly created key */}
+              {newApiKey && (
+                <div className="mb-6 p-4 border border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/20 rounded-lg space-y-3">
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle className="h-4 w-4 text-amber-600" />
+                    <p className="font-medium text-amber-800 dark:text-amber-300">
+                      Save this — it won&apos;t be shown again
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <code className="flex-1 text-sm bg-white dark:bg-gray-900 px-3 py-2 rounded border font-mono break-all">
+                      {newApiKey}
+                    </code>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => copyToClipboard(newApiKey)}
+                    >
+                      {keyCopied ? (
+                        <Check className="h-4 w-4 text-green-600" />
+                      ) : (
+                        <Copy className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-amber-700"
+                    onClick={() => setNewApiKey(null)}
+                  >
+                    I&apos;ve saved it — dismiss
+                  </Button>
+                </div>
+              )}
+
+              {/* List of created keys */}
+              {createdKeys.length > 0 ? (
+                <div className="space-y-3 mb-6">
+                  {createdKeys.map((key) => (
+                    <div key={key.id} className="flex items-center justify-between p-3 border rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <Key className="h-4 w-4 text-muted-foreground" />
+                        <div>
+                          <p className="font-medium text-sm">{key.name}</p>
+                          <p className="text-xs text-muted-foreground font-mono">
+                            {key.keyPrefix}••••••••
+                          </p>
+                        </div>
+                      </div>
+                      <span className="text-xs text-muted-foreground">
+                        Created {new Date(key.createdAt).toLocaleDateString()}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Key className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>No API keys created yet</p>
+                  <p className="text-sm mt-1">Create an API key to start tracking events</p>
+                </div>
+              )}
+
+              {/* Create API Key Form */}
+              {showApiKeyForm ? (
+                <div className="mt-4 p-4 border border-dashed rounded-lg space-y-3">
+                  <label className="text-sm font-medium block">API Key Name</label>
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="e.g., Production, Staging, My App"
+                      value={apiKeyName}
+                      onChange={(e) => setApiKeyName(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && apiKeyName.trim()) {
+                          handleCreateApiKey()
+                        }
+                      }}
+                      autoFocus
+                      disabled={creatingKey}
+                    />
+                    <Button onClick={handleCreateApiKey} disabled={creatingKey || !apiKeyName.trim()}>
+                      {creatingKey ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        'Create'
+                      )}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      onClick={() => {
+                        setShowApiKeyForm(false)
+                        setApiKeyName('')
+                      }}
+                      disabled={creatingKey}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <Button className="mt-4" onClick={() => setShowApiKeyForm(true)}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Create API Key
+                </Button>
+              )}
             </CardContent>
           </Card>
 

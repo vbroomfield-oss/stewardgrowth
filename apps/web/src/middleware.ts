@@ -2,40 +2,61 @@ import { type NextRequest, NextResponse } from 'next/server'
 import { updateSession } from '@/lib/supabase/middleware'
 
 // Routes that don't require authentication
-const publicRoutes = ['/login', '/signup', '/forgot-password', '/auth/callback']
+const PUBLIC_ROUTES = [
+  '/login',
+  '/signup',
+  '/forgot-password',
+  '/auth/callback',
+  '/auth/reset-password',
+  '/terms',
+  '/privacy',
+  '/pricing',
+]
 
 // Routes that should redirect to dashboard if already authenticated
-const authRoutes = ['/login', '/signup', '/forgot-password']
+const AUTH_ROUTES = ['/login', '/signup', '/forgot-password']
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
-  // Update Supabase session
-  const response = await updateSession(request)
-
-  // Check if it's an API route or static file
+  // Skip API routes, static files, and public assets
   if (
     pathname.startsWith('/api') ||
     pathname.startsWith('/_next') ||
+    pathname.startsWith('/sdk') ||
+    pathname.startsWith('/images') ||
     pathname.includes('.')
   ) {
+    const { response } = await updateSession(request)
     return response
   }
 
-  // For now, allow all routes (auth will be checked in layouts/pages)
-  // This avoids issues during development without Supabase configured
+  const { response, user } = await updateSession(request)
+
+  const isPublicRoute = PUBLIC_ROUTES.some(
+    (route) => pathname === route || pathname.startsWith(route + '/')
+  )
+  const isAuthRoute = AUTH_ROUTES.some((route) => pathname === route)
+
+  // Redirect unauthenticated users to login
+  if (!user && !isPublicRoute) {
+    const redirectUrl = new URL('/login', request.url)
+    if (pathname !== '/') {
+      redirectUrl.searchParams.set('redirectTo', pathname)
+    }
+    return NextResponse.redirect(redirectUrl)
+  }
+
+  // Redirect authenticated users away from auth pages
+  if (user && isAuthRoute) {
+    return NextResponse.redirect(new URL('/', request.url))
+  }
+
   return response
 }
 
 export const config = {
   matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * Feel free to modify this pattern to include more paths.
-     */
     '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 }
