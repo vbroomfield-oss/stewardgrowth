@@ -25,8 +25,13 @@ import {
   Moon,
   Sun,
   ChevronDown,
+  Sparkles,
+  Megaphone,
+  TrendingUp,
+  Plus,
 } from 'lucide-react'
 import { useTheme } from 'next-themes'
+import { useToast } from '@/components/ui/use-toast'
 
 interface HeaderProps {
   onMenuClick?: () => void
@@ -41,6 +46,7 @@ interface HeaderProps {
 export function Header({ onMenuClick, user }: HeaderProps) {
   const router = useRouter()
   const { theme, setTheme } = useTheme()
+  const { toast } = useToast()
   const [searchQuery, setSearchQuery] = useState('')
   const [pendingCount, setPendingCount] = useState(0)
 
@@ -111,17 +117,21 @@ export function Header({ onMenuClick, user }: HeaderProps) {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">
-              <DropdownMenuItem>
+              <DropdownMenuItem onClick={() => router.push('/content?action=create')}>
+                <Sparkles className="mr-2 h-4 w-4" />
                 Generate Content
               </DropdownMenuItem>
-              <DropdownMenuItem>
+              <DropdownMenuItem onClick={() => router.push('/ads?action=new-campaign')}>
+                <Megaphone className="mr-2 h-4 w-4" />
                 Create Campaign
               </DropdownMenuItem>
-              <DropdownMenuItem>
+              <DropdownMenuItem onClick={() => toast({ title: 'Coming Soon', description: 'SEO Audit is under development.' })}>
+                <TrendingUp className="mr-2 h-4 w-4" />
                 Run SEO Audit
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem>
+              <DropdownMenuItem onClick={() => router.push('/brands/new')}>
+                <Plus className="mr-2 h-4 w-4" />
                 Add New Brand
               </DropdownMenuItem>
             </DropdownMenuContent>
