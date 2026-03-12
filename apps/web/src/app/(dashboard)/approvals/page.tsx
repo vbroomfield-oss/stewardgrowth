@@ -35,6 +35,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { cn } from '@/lib/utils'
 import { PlatformPreview, getPlatformColor, getPlatformIcon } from '@/components/social/platform-preview'
 
 interface Brand {
