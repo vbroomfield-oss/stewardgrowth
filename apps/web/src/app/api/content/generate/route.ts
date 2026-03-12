@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic'
 
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { getUserWithOrganization } from '@/lib/auth/get-user-org'
 import { db } from '@/lib/db'
 import {
   generateBlogPost,
@@ -142,10 +142,8 @@ function buildBrandVoice(brand: { slug: string; name: string; brandVoice: unknow
  */
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createClient()
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-
-    if (authError || !user) {
+    const user = await getUserWithOrganization()
+    if (!user) {
       return NextResponse.json(
         { success: false, error: 'Unauthorized' },
         { status: 401 }
@@ -294,16 +292,26 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Content generation error:', error)
 
-    // Check if it's an OpenAI API error
-    if (error instanceof Error && error.message.includes('API')) {
+    const message = error instanceof Error ? error.message : 'Unknown error'
+
+    // Check if it's an OpenAI API key issue
+    if (message.includes('OPENAI_API_KEY') || message.includes('API key')) {
       return NextResponse.json(
-        { success: false, error: 'AI service temporarily unavailable' },
+        { success: false, error: 'OpenAI API key not configured. Check Vercel environment variables.' },
+        { status: 503 }
+      )
+    }
+
+    // Check if it's an OpenAI API error
+    if (message.includes('API') || message.includes('429') || message.includes('rate')) {
+      return NextResponse.json(
+        { success: false, error: `AI service error: ${message}` },
         { status: 503 }
       )
     }
 
     return NextResponse.json(
-      { success: false, error: 'Failed to generate content' },
+      { success: false, error: `Failed to generate content: ${message}` },
       { status: 500 }
     )
   }

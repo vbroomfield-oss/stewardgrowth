@@ -34,6 +34,12 @@ interface UserData {
   organizationName: string
 }
 
+interface BrandGA4 {
+  name: string
+  slug: string
+  ga4PropertyId: string | null
+}
+
 interface ApiKeyConfig {
   key: string
   label: string
@@ -105,6 +111,7 @@ export default function SettingsPage() {
   const [user, setUser] = useState<UserData | null>(null)
   const [loading, setLoading] = useState(true)
   const [settings, setSettings] = useState<Record<string, { isSet: boolean; preview: string }>>({})
+  const [brandGA4s, setBrandGA4s] = useState<BrandGA4[]>([])
   const [editingKey, setEditingKey] = useState<string | null>(null)
   const [editValue, setEditValue] = useState('')
   const [saving, setSaving] = useState<string | null>(null)
@@ -127,9 +134,10 @@ export default function SettingsPage() {
   useEffect(() => {
     async function fetchData() {
       try {
-        const [userRes, settingsRes] = await Promise.all([
+        const [userRes, settingsRes, brandsRes] = await Promise.all([
           fetch('/api/user', { credentials: 'include' }),
           fetch('/api/settings', { credentials: 'include' }),
+          fetch('/api/brands', { credentials: 'include' }),
         ])
 
         if (userRes.ok) {
@@ -140,6 +148,12 @@ export default function SettingsPage() {
         if (settingsRes.ok) {
           const data = await settingsRes.json()
           setSettings(data.settings || {})
+        }
+
+        if (brandsRes.ok) {
+          const data = await brandsRes.json()
+          const brands = data.brands || []
+          setBrandGA4s(brands.map((b: any) => ({ name: b.name, slug: b.slug, ga4PropertyId: b.ga4PropertyId || null })))
         }
       } catch (err) {
         console.error('Failed to load settings:', err)
@@ -393,20 +407,32 @@ export default function SettingsPage() {
                     const isSaving = saving === config.key
                     const justSaved = saveSuccess === config.key
 
+                    // For GA4 field, check if brands already have their own IDs
+                    const isGA4Field = config.key === 'GOOGLE_ANALYTICS_MEASUREMENT_ID'
+                    const brandsWithGA4 = brandGA4s.filter(b => b.ga4PropertyId)
+                    const allBrandsHaveGA4 = brandGA4s.length > 0 && brandsWithGA4.length === brandGA4s.length
+
                     return (
                       <div
                         key={config.key}
                         className={cn(
                           'p-4 border rounded-lg transition-colors',
-                          isSet
+                          isGA4Field && allBrandsHaveGA4
                             ? 'border-green-200 bg-green-50/50 dark:border-green-900 dark:bg-green-950/20'
-                            : 'border-dashed'
+                            : isSet
+                              ? 'border-green-200 bg-green-50/50 dark:border-green-900 dark:bg-green-950/20'
+                              : 'border-dashed'
                         )}
                       >
                         <div className="flex items-start justify-between gap-4">
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2">
                               <p className="font-medium">{config.label}</p>
+                              {isGA4Field && allBrandsHaveGA4 && !isSet && (
+                                <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-400">
+                                  <Check className="h-3 w-3" /> All Brands Configured
+                                </span>
+                              )}
                               {isSet && (
                                 <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-400">
                                   <Check className="h-3 w-3" /> Connected
@@ -419,6 +445,37 @@ export default function SettingsPage() {
                             <p className="text-sm text-muted-foreground mt-1">
                               {config.description}
                             </p>
+
+                            {/* Show per-brand GA4 status */}
+                            {isGA4Field && brandGA4s.length > 0 && (
+                              <div className="mt-3 space-y-1.5">
+                                {brandGA4s.map((b) => (
+                                  <div key={b.slug} className="flex items-center gap-2 text-sm">
+                                    {b.ga4PropertyId ? (
+                                      <Check className="h-3.5 w-3.5 text-green-600 shrink-0" />
+                                    ) : (
+                                      <AlertTriangle className="h-3.5 w-3.5 text-amber-500 shrink-0" />
+                                    )}
+                                    <span className="font-medium">{b.name}</span>
+                                    {b.ga4PropertyId ? (
+                                      <code className="text-xs bg-muted px-1.5 py-0.5 rounded font-mono text-green-700 dark:text-green-400">
+                                        {b.ga4PropertyId}
+                                      </code>
+                                    ) : (
+                                      <span className="text-xs text-muted-foreground">
+                                        Not set — <a href={`/brands/${b.slug}/settings`} className="underline hover:text-primary">configure in Brand Settings</a>
+                                      </span>
+                                    )}
+                                  </div>
+                                ))}
+                                {allBrandsHaveGA4 && !isSet && (
+                                  <p className="text-xs text-green-700 dark:text-green-400 mt-2">
+                                    All brands have their own GA4 IDs — no fallback needed.
+                                  </p>
+                                )}
+                              </div>
+                            )}
+
                             {isSet && !isEditing && (
                               <div className="flex items-center gap-2 mt-2">
                                 <code className="text-xs bg-muted px-2 py-1 rounded font-mono">
@@ -487,16 +544,19 @@ export default function SettingsPage() {
                                     <Trash2 className="h-3 w-3" />
                                   </Button>
                                 )}
-                                <Button
-                                  size="sm"
-                                  variant={isSet ? 'outline' : 'default'}
-                                  onClick={() => {
-                                    setEditingKey(config.key)
-                                    setEditValue('')
-                                  }}
-                                >
-                                  {isSet ? 'Update' : 'Add Key'}
-                                </Button>
+                                {/* Hide "Add Key" for GA4 when all brands are configured */}
+                                {!(isGA4Field && allBrandsHaveGA4 && !isSet) && (
+                                  <Button
+                                    size="sm"
+                                    variant={isSet ? 'outline' : 'default'}
+                                    onClick={() => {
+                                      setEditingKey(config.key)
+                                      setEditValue('')
+                                    }}
+                                  >
+                                    {isSet ? 'Update' : 'Add Key'}
+                                  </Button>
+                                )}
                               </>
                             )}
                           </div>

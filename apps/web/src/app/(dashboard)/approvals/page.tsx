@@ -203,31 +203,32 @@ export default function ApprovalsPage() {
   }
 
   async function handleRegenerateAllPending() {
-    // Get pending approvals that have images
-    const pendingWithImages = approvals.filter(
-      a => a.status === 'PENDING' && a.proposedChanges?.imageUrl
-    )
+    // Get ALL pending approvals (generate images for those without, regenerate for those with)
+    const pendingApprovals = approvals.filter(a => a.status === 'PENDING')
 
-    if (pendingWithImages.length === 0) {
-      alert('No pending approvals with images to regenerate')
+    if (pendingApprovals.length === 0) {
+      alert('No pending approvals to generate images for')
       return
     }
 
+    const withImages = pendingApprovals.filter(a => a.proposedChanges?.imageUrl).length
+    const withoutImages = pendingApprovals.length - withImages
+
     const confirmed = window.confirm(
-      `This will regenerate images for ${pendingWithImages.length} pending approval(s) using book covers or brand logos where available. Continue?`
+      `This will generate/regenerate images for ${pendingApprovals.length} pending approval(s)${withoutImages > 0 ? ` (${withoutImages} new, ${withImages} regenerate)` : ''} using book covers or brand logos where available. Continue?`
     )
 
     if (!confirmed) return
 
     setRegeneratingAll(true)
-    setRegenerateProgress({ current: 0, total: pendingWithImages.length })
+    setRegenerateProgress({ current: 0, total: pendingApprovals.length })
 
     let successCount = 0
     let failCount = 0
 
-    for (let i = 0; i < pendingWithImages.length; i++) {
-      const approval = pendingWithImages[i]
-      setRegenerateProgress({ current: i + 1, total: pendingWithImages.length })
+    for (let i = 0; i < pendingApprovals.length; i++) {
+      const approval = pendingApprovals[i]
+      setRegenerateProgress({ current: i + 1, total: pendingApprovals.length })
 
       try {
         const res = await fetch(`/api/approvals/${approval.id}/regenerate-image`, {
@@ -461,7 +462,7 @@ export default function ApprovalsPage() {
                         ) : (
                           <>
                             <RefreshCw className="h-4 w-4" />
-                            Regenerate All Images
+                            Generate All Images
                           </>
                         )}
                       </Button>
@@ -578,14 +579,19 @@ export default function ApprovalsPage() {
                                             ))}
                                           </div>
 
-                                          {/* Regenerate Image Button */}
-                                          {approval.proposedChanges?.imageUrl && approval.status === 'PENDING' && (
-                                            <div className="mb-4 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+                                          {/* Generate / Regenerate Image Button */}
+                                          {approval.status === 'PENDING' && (
+                                            <div className={cn(
+                                              "mb-4 p-3 rounded-lg border",
+                                              approval.proposedChanges?.imageUrl
+                                                ? "bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800"
+                                                : "bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800"
+                                            )}>
                                               <div className="flex items-center justify-between">
                                                 <div className="flex items-center gap-2">
-                                                  <ImageIcon className="h-4 w-4 text-amber-600" />
-                                                  <span className="text-sm font-medium text-amber-800 dark:text-amber-200">
-                                                    Image not quite right?
+                                                  <ImageIcon className={cn("h-4 w-4", approval.proposedChanges?.imageUrl ? "text-amber-600" : "text-blue-600")} />
+                                                  <span className={cn("text-sm font-medium", approval.proposedChanges?.imageUrl ? "text-amber-800 dark:text-amber-200" : "text-blue-800 dark:text-blue-200")}>
+                                                    {approval.proposedChanges?.imageUrl ? 'Image not quite right?' : 'No image yet'}
                                                   </span>
                                                 </div>
                                                 <Button
@@ -593,22 +599,22 @@ export default function ApprovalsPage() {
                                                   size="sm"
                                                   onClick={() => handleRegenerateImage(approval.id)}
                                                   disabled={regeneratingId === approval.id}
-                                                  className="border-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/40"
+                                                  className={approval.proposedChanges?.imageUrl ? "border-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/40" : "border-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/40"}
                                                 >
                                                   {regeneratingId === approval.id ? (
                                                     <>
                                                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                                      Regenerating...
+                                                      {approval.proposedChanges?.imageUrl ? 'Regenerating...' : 'Generating...'}
                                                     </>
                                                   ) : (
                                                     <>
                                                       <RefreshCw className="h-4 w-4 mr-2" />
-                                                      Regenerate with Brand Focus
+                                                      {approval.proposedChanges?.imageUrl ? 'Regenerate with Brand Focus' : 'Generate Image'}
                                                     </>
                                                   )}
                                                 </Button>
                                               </div>
-                                              <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">
+                                              <p className={cn("text-xs mt-1", approval.proposedChanges?.imageUrl ? "text-amber-700 dark:text-amber-300" : "text-blue-700 dark:text-blue-300")}>
                                                 Uses your brand colors, visual style, and book cover context to generate a new image
                                               </p>
                                             </div>

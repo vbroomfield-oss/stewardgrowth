@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic'
 
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { getUserWithOrganization } from '@/lib/auth/get-user-org'
 import { db } from '@/lib/db'
 import { generateSocialImage } from '@/lib/ai/openai'
 
@@ -19,10 +19,8 @@ import { generateSocialImage } from '@/lib/ai/openai'
  */
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createClient()
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-
-    if (authError || !user) {
+    const user = await getUserWithOrganization()
+    if (!user) {
       return NextResponse.json(
         { success: false, error: 'Unauthorized' },
         { status: 401 }
