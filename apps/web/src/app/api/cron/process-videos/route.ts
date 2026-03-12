@@ -11,13 +11,13 @@ function verifyCronRequest(request: NextRequest): boolean {
   return process.env.NODE_ENV === 'development'
 }
 
-const VIDEO_PLATFORMS = ['tiktok', 'youtube']
+const VIDEO_PLATFORMS = ['tiktok', 'youtube', 'facebook', 'instagram']
 
 /**
  * GET /api/cron/process-videos
  *
  * Runs every 5 minutes (configured in vercel.json)
- * Processes video generation for TikTok and YouTube content:
+ * Processes video generation for TikTok, YouTube, Facebook, and Instagram content:
  * 1. Generates images with DALL-E
  * 2. Creates voiceover with ElevenLabs
  * 3. Compiles video with Shotstack
@@ -70,7 +70,7 @@ export async function GET(request: NextRequest) {
     // Start video generation for each
     for (const content of toGenerate) {
       const platformVersions = (content.platformVersions as Record<string, any>) || {}
-      const videoPlatform = content.platforms.find(p => VIDEO_PLATFORMS.includes(p)) as 'tiktok' | 'youtube'
+      const videoPlatform = content.platforms.find(p => VIDEO_PLATFORMS.includes(p)) as 'tiktok' | 'youtube' | 'facebook' | 'instagram'
       if (!videoPlatform) continue
 
       const platformData = platformVersions[videoPlatform]
@@ -78,9 +78,10 @@ export async function GET(request: NextRequest) {
       try {
         console.log(`[Video] Starting generation for ${content.id}...`)
 
+        const videoFormat = videoPlatform === 'youtube' ? 'youtube' : 'tiktok' as const
         const { renderId } = await createSocialVideo({
           script: platformData.videoScript,
-          platform: videoPlatform === 'youtube' ? 'youtube' : 'tiktok',
+          platform: (videoPlatform === 'facebook' || videoPlatform === 'instagram') ? videoPlatform : videoFormat,
           brandName: content.brand?.name || 'Brand',
         })
 

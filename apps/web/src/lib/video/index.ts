@@ -16,7 +16,7 @@ import OpenAI from 'openai'
 
 export interface VideoContentOptions {
   script: string
-  platform: 'tiktok' | 'youtube' | 'instagram'
+  platform: 'tiktok' | 'youtube' | 'instagram' | 'facebook'
   brandName: string
   brandVoice?: 'professional' | 'friendly' | 'authoritative' | 'youthful'
   gender?: 'male' | 'female'

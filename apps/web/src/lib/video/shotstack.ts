@@ -248,7 +248,7 @@ export async function createSlideshowVideo(options: {
   script: string // Full script (for voiceover timing)
   voiceoverUrl?: string // Pre-generated voiceover URL
   textOverlays?: string[] // Text to show on each slide
-  platform: 'tiktok' | 'youtube' | 'instagram'
+  platform: 'tiktok' | 'youtube' | 'instagram' | 'facebook'
   musicUrl?: string
 }): Promise<{ renderId: string }> {
   const { images, script, voiceoverUrl, textOverlays = [], platform, musicUrl } = options

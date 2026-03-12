@@ -108,6 +108,19 @@ function BrandSettingsContent() {
     fetchBrand()
   }, [slug])
 
+  // Show toast for OAuth callback results
+  useEffect(() => {
+    const success = searchParams.get('success')
+    const oauthError = searchParams.get('error')
+    if (success) {
+      const platform = success.replace('_connected', '').replace('_', ' ')
+      toast({ title: 'Connected!', description: `${platform.charAt(0).toUpperCase() + platform.slice(1)} has been connected successfully.` })
+    }
+    if (oauthError) {
+      toast({ title: 'Connection Failed', description: `OAuth error: ${oauthError}`, variant: 'destructive' })
+    }
+  }, [searchParams])
+
   const fetchBrand = async () => {
     try {
       const response = await fetch(`/api/brands/${slug}`)

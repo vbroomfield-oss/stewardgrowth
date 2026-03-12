@@ -25,8 +25,8 @@ type SocialPlatform = 'twitter' | 'linkedin' | 'facebook' | 'instagram' | 'tikto
 const BATCH_PLATFORMS: Record<string, SocialPlatform[]> = {
   '1': ['twitter'],       // Monday - also includes blogs + email
   '2': ['linkedin'],      // Tuesday
-  '3': ['facebook'],      // Wednesday
-  '4': ['instagram'],     // Thursday
+  '3': ['facebook'],      // Wednesday (image + video)
+  '4': ['instagram'],     // Thursday (image + video)
   '5': ['threads'],       // Friday
   '6': ['tiktok'],        // Saturday (video - no image generation)
   '7': ['youtube', 'pinterest'],  // Sunday (youtube=video, pinterest=quick)
@@ -52,8 +52,8 @@ function generateBookTopics(book: { title: string; description: string | null; c
  * Runs daily at 12 PM EST / 5 PM UTC
  * ?batch=1 (Monday): twitter + blogs + email
  * ?batch=2 (Tuesday): linkedin
- * ?batch=3 (Wednesday): facebook
- * ?batch=4 (Thursday): instagram
+ * ?batch=3 (Wednesday): facebook (image + video)
+ * ?batch=4 (Thursday): instagram (image + video)
  * ?batch=5 (Friday): threads
  * ?batch=6 (Saturday): tiktok (video - no image generation)
  * ?batch=7 (Sunday): youtube + pinterest
@@ -154,11 +154,12 @@ export async function GET(request: NextRequest) {
                   callToAction: book.amazonUrl ? `Get your copy: ${book.amazonUrl}` : undefined,
                 })
 
-                const isVideoPlatform = platform === 'tiktok' || platform === 'youtube'
+                const isVideoOnly = platform === 'tiktok' || platform === 'youtube'
+                const supportsVideo = isVideoOnly || platform === 'facebook' || platform === 'instagram'
 
-                // For non-video platforms: Use book cover if available, otherwise generate mood image
+                // For platforms that aren't video-only: Use book cover if available, otherwise generate mood image
                 let imageUrl: string | undefined
-                if (!isVideoPlatform) {
+                if (!isVideoOnly) {
                   if (book.coverImage) {
                     // USE THE BOOK COVER DIRECTLY - best for book marketing!
                     imageUrl = book.coverImage
@@ -199,7 +200,7 @@ export async function GET(request: NextRequest) {
                         bookId: book.id,
                         bookTitle: book.title,
                         amazonUrl: book.amazonUrl,
-                        ...(isVideoPlatform && {
+                        ...(supportsVideo && {
                           isVideo: true,
                           videoScript: result.videoScript,
                           hook: result.hook,
@@ -448,11 +449,12 @@ export async function GET(request: NextRequest) {
                 brandVoice: baseBrandVoice,
               })
 
-              const isVideoPlatform = platform === 'tiktok' || platform === 'youtube'
+              const isVideoOnly = platform === 'tiktok' || platform === 'youtube'
+              const supportsVideo = isVideoOnly || platform === 'facebook' || platform === 'instagram'
 
-              // For non-video platforms: Use brand logo if available, otherwise generate image
+              // For platforms that aren't video-only: Use brand logo if available, otherwise generate image
               let brandImageUrl: string | undefined
-              if (!isVideoPlatform) {
+              if (!isVideoOnly) {
                 // Check for brand logo in settings or logo field
                 const brandLogo = brand.logo || settings.logoUrl
                 if (brandLogo) {
@@ -491,7 +493,7 @@ export async function GET(request: NextRequest) {
                       hashtags: result.hashtags,
                       mediaRecommendation: result.mediaRecommendation,
                       imageUrl: brandImageUrl,
-                      ...(isVideoPlatform && {
+                      ...(supportsVideo && {
                         isVideo: true,
                         videoScript: result.videoScript,
                         hook: result.hook,

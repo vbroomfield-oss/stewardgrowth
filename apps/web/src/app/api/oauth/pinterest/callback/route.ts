@@ -75,7 +75,10 @@ export async function GET(request: NextRequest) {
       },
     })
 
-    return NextResponse.redirect(new URL(`/brands/${stateData.brandId}?success=pinterest_connected`, request.url))
+    // Look up brand slug for redirect
+    const brandForRedirect = await db.saaSBrand.findUnique({ where: { id: stateData.brandId }, select: { slug: true } })
+    const redirectSlug = brandForRedirect?.slug || stateData.brandId
+    return NextResponse.redirect(new URL(`/brands/${redirectSlug}/settings?tab=social&success=pinterest_connected`, request.url))
   } catch (error) {
     console.error('Pinterest callback error:', error)
     return NextResponse.redirect(new URL('/settings?error=pinterest_callback_failed', request.url))

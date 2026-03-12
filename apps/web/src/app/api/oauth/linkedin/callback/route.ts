@@ -102,8 +102,11 @@ export async function GET(request: NextRequest) {
       },
     })
 
+    // Look up brand slug for redirect
+    const brandForRedirect = await db.saaSBrand.findUnique({ where: { id: stateData.brandId }, select: { slug: true } })
+    const redirectSlug = brandForRedirect?.slug || stateData.brandId
     return NextResponse.redirect(
-      new URL(`/brands/${stateData.brandId}?success=linkedin_connected`, request.url)
+      new URL(`/brands/${redirectSlug}/settings?tab=social&success=linkedin_connected`, request.url)
     )
   } catch (error) {
     console.error('LinkedIn callback error:', error)

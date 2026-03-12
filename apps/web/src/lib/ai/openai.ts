@@ -180,8 +180,8 @@ export async function generateSocialPost(
   const platformConfig = {
     twitter: { maxLength: 280, name: 'Twitter/X', hashtagCount: 2, isVideo: false },
     linkedin: { maxLength: 3000, name: 'LinkedIn', hashtagCount: 5, isVideo: false },
-    facebook: { maxLength: 500, name: 'Facebook', hashtagCount: 3, isVideo: false },
-    instagram: { maxLength: 2200, name: 'Instagram', hashtagCount: 10, isVideo: false },
+    facebook: { maxLength: 500, name: 'Facebook', hashtagCount: 3, isVideo: true },
+    instagram: { maxLength: 2200, name: 'Instagram', hashtagCount: 10, isVideo: true },
     tiktok: { maxLength: 2200, name: 'TikTok', hashtagCount: 5, isVideo: true },
     threads: { maxLength: 500, name: 'Threads', hashtagCount: 3, isVideo: false },
     youtube: { maxLength: 5000, name: 'YouTube Shorts', hashtagCount: 3, isVideo: true },
