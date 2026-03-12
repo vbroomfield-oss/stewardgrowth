@@ -166,7 +166,7 @@ export default function BrandDetailPage() {
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" asChild>
-            <Link href={`/brands/${brand.slug}/social`}>
+            <Link href={`/brands/${brand.slug}/settings?tab=social`}>
               <Share2 className="mr-2 h-4 w-4" />
               Social Accounts
             </Link>
@@ -332,7 +332,7 @@ export default function BrandDetailPage() {
 
           {/* Quick Links */}
           <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-6">
-            <Link href={`/brands/${brand.slug}/social`} className="block">
+            <Link href={`/brands/${brand.slug}/settings?tab=social`} className="block">
               <Card className="hover:border-primary/50 transition-colors cursor-pointer h-full">
                 <CardContent className="p-4 flex items-center gap-3">
                   <div className="p-2 rounded-lg bg-indigo-100 dark:bg-indigo-900/30">
