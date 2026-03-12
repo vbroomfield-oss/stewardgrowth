@@ -99,7 +99,7 @@ For each day (Monday through Sunday), provide 2-3 specific tasks across categori
 - Ads (campaign adjustments, new creatives)
 - Outreach (partnerships, community engagement)
 
-Respond in JSON format:
+Respond ONLY with valid JSON (no markdown, no code fences, no extra text):
 {
   "goals": ["Goal 1", "Goal 2", "Goal 3"],
   "focusAreas": ["SEO", "Content", "Social"],
@@ -123,8 +123,8 @@ Respond in JSON format:
     const anthropic = new Anthropic({ apiKey })
 
     const message = await anthropic.messages.create({
-      model: 'claude-sonnet-4-6',
-      max_tokens: 2048,
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 4096,
       messages: [{ role: 'user', content: prompt }],
     })
 
@@ -134,12 +134,19 @@ Respond in JSON format:
     let parsed: Record<string, any> = {}
 
     try {
-      const jsonMatch = text.match(/\{[\s\S]*\}/)
-      if (jsonMatch) {
-        parsed = JSON.parse(jsonMatch[0])
+      // Strip markdown code fences if present
+      const cleaned = text.replace(/```(?:json)?\s*/g, '').replace(/```\s*/g, '').trim()
+      // Try direct parse first, then regex fallback
+      try {
+        parsed = JSON.parse(cleaned)
+      } catch {
+        const jsonMatch = cleaned.match(/\{[\s\S]*\}/)
+        if (jsonMatch) {
+          parsed = JSON.parse(jsonMatch[0])
+        }
       }
     } catch {
-      console.error('Failed to parse weekly plan response')
+      console.error('Failed to parse weekly plan response:', text.substring(0, 200))
       return NextResponse.json({ error: 'Failed to parse AI response' }, { status: 500 })
     }
 

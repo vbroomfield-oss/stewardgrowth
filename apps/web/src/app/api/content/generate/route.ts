@@ -9,6 +9,7 @@ import {
   generateAdCopy,
   generateEmail,
   generateContentIdeas,
+  generateSocialImage,
   type ContentGenerationOptions,
   type BrandVoice,
 } from '@/lib/ai/openai'
@@ -258,8 +259,25 @@ export async function POST(request: NextRequest) {
         )
     }
 
-    // Log generation for tracking
-    // In production: Save to database for audit trail
+    // Generate an accompanying image for visual content types
+    let imageUrl: string | undefined
+    if (type !== 'ideas') {
+      try {
+        const imageResult = await generateSocialImage(
+          topic,
+          {
+            platform: platform || (type === 'blog' ? 'linkedin' : 'instagram'),
+            brandName: brandName,
+            style: 'professional',
+          }
+        )
+        if ('url' in imageResult) {
+          imageUrl = imageResult.url
+        }
+      } catch (err) {
+        console.error('Image generation failed (non-blocking):', err)
+      }
+    }
 
     return NextResponse.json({
       success: true,
@@ -269,6 +287,7 @@ export async function POST(request: NextRequest) {
         topic,
         platform,
         generatedAt: new Date().toISOString(),
+        ...(imageUrl && { imageUrl }),
         ...result,
       },
     })

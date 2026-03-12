@@ -156,8 +156,8 @@ Respond in JSON format:
 ]`
 
       const message = await anthropic.messages.create({
-        model: 'claude-sonnet-4-6',
-        max_tokens: 1024,
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 2048,
         messages: [{ role: 'user', content: prompt }],
       })
 
@@ -171,9 +171,14 @@ Respond in JSON format:
       }> = []
 
       try {
-        const jsonMatch = text.match(/\[[\s\S]*\]/)
-        if (jsonMatch) {
-          parsed = JSON.parse(jsonMatch[0])
+        const cleaned = text.replace(/```(?:json)?\s*/g, '').replace(/```\s*/g, '').trim()
+        try {
+          parsed = JSON.parse(cleaned)
+        } catch {
+          const jsonMatch = cleaned.match(/\[[\s\S]*\]/)
+          if (jsonMatch) {
+            parsed = JSON.parse(jsonMatch[0])
+          }
         }
       } catch {
         console.error('Failed to parse AI response for brand', brand.name)

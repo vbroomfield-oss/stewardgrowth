@@ -23,6 +23,7 @@ import {
   Mail,
   Target,
   AlertCircle,
+  ImageIcon,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { toast } from '@/components/ui/use-toast'
@@ -73,6 +74,8 @@ function CreateContentPageContent() {
   const [generating, setGenerating] = useState(false)
   const [generatedContent, setGeneratedContent] = useState<string | null>(null)
   const [alternates, setAlternates] = useState<string[]>([])
+  const [imageUrl, setImageUrl] = useState<string | null>(null)
+  const [regeneratingImage, setRegeneratingImage] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
 
   useEffect(() => {
@@ -128,6 +131,9 @@ function CreateContentPageContent() {
       if (data.success) {
         setGeneratedContent(data.data.content)
         setAlternates(data.data.alternates || [])
+        if (data.data.imageUrl) {
+          setImageUrl(data.data.imageUrl)
+        }
       } else {
         // Show error or fallback content
         setGeneratedContent(`Failed to generate content: ${data.error || 'Unknown error'}`)
@@ -136,6 +142,35 @@ function CreateContentPageContent() {
       setGeneratedContent('Failed to generate content. Please try again.')
     } finally {
       setGenerating(false)
+    }
+  }
+
+  const handleRegenerateImage = async () => {
+    if (!brand || !generatedContent) return
+    setRegeneratingImage(true)
+    try {
+      const res = await fetch('/api/content/generate-image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          brandId: brand,
+          content: generatedContent,
+          platform: platform || (contentType === 'blog' ? 'linkedin' : 'instagram'),
+          style: 'professional',
+        }),
+      })
+      const data = await res.json()
+      if (data.success && data.imageUrl) {
+        setImageUrl(data.imageUrl)
+        toast({ title: 'Image regenerated', description: 'New image created successfully.' })
+      } else {
+        toast({ title: 'Image failed', description: data.error || 'Could not generate image.', variant: 'destructive' })
+      }
+    } catch {
+      toast({ title: 'Image failed', description: 'Failed to regenerate image.', variant: 'destructive' })
+    } finally {
+      setRegeneratingImage(false)
     }
   }
 
@@ -151,11 +186,12 @@ function CreateContentPageContent() {
           brandId: brand,
           title: topic,
           content: generatedContent,
-          platforms: platform ? [platform] : [],
+          platforms: platform ? [platform] : [contentType === 'blog' ? 'blog' : contentType === 'email' ? 'email' : 'general'],
           status: 'DRAFT',
           aiGenerated: true,
           aiPrompt: topic,
           aiModel: 'gpt-4o',
+          ...(imageUrl && { platformVersions: { imageUrl } }),
         }),
       })
       if (!response.ok) {
@@ -182,11 +218,12 @@ function CreateContentPageContent() {
           brandId: brand,
           title: topic,
           content: generatedContent,
-          platforms: platform ? [platform] : [],
+          platforms: platform ? [platform] : [contentType === 'blog' ? 'blog' : contentType === 'email' ? 'email' : 'general'],
           status: 'AWAITING_APPROVAL',
           aiGenerated: true,
           aiPrompt: topic,
           aiModel: 'gpt-4o',
+          ...(imageUrl && { platformVersions: { imageUrl } }),
         }),
       })
       if (!response.ok) {
@@ -454,6 +491,61 @@ function CreateContentPageContent() {
                   <Sparkles className="h-12 w-12 mb-4 opacity-50" />
                   <p>Your AI-generated content will appear here</p>
                   <p className="text-sm">Fill out the form and click Generate</p>
+                </div>
+              )}
+
+              {/* Generated Image */}
+              {imageUrl && (
+                <div className="mt-6">
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="font-medium flex items-center gap-2">
+                      <ImageIcon className="h-4 w-4" />
+                      Generated Image
+                    </h4>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleRegenerateImage}
+                      disabled={regeneratingImage}
+                    >
+                      {regeneratingImage ? (
+                        <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                      ) : (
+                        <RefreshCw className="h-4 w-4 mr-1" />
+                      )}
+                      Regenerate Image
+                    </Button>
+                  </div>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={imageUrl}
+                    alt="AI-generated marketing image"
+                    className="w-full rounded-lg border"
+                  />
+                </div>
+              )}
+
+              {/* Generate image button if content exists but no image */}
+              {generatedContent && !imageUrl && (
+                <div className="mt-4">
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={handleRegenerateImage}
+                    disabled={regeneratingImage}
+                  >
+                    {regeneratingImage ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Generating Image...
+                      </>
+                    ) : (
+                      <>
+                        <ImageIcon className="mr-2 h-4 w-4" />
+                        Generate Image
+                      </>
+                    )}
+                  </Button>
                 </div>
               )}
 
