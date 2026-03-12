@@ -28,6 +28,13 @@ import {
   RefreshCw,
   ImageIcon,
 } from 'lucide-react'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { PlatformPreview, getPlatformColor, getPlatformIcon } from '@/components/social/platform-preview'
 
 interface Brand {
@@ -62,7 +69,7 @@ interface Stats {
 export default function ApprovalsPage() {
   const [brands, setBrands] = useState<Brand[]>([])
   const [approvals, setApprovals] = useState<Approval[]>([])
-  const [stats, setStats] = useState<Stats>({ pending: 0, approved: 0, rejected: 0 })
+  const [rawStats, setRawStats] = useState<Stats>({ pending: 0, approved: 0, rejected: 0 })
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('pending')
   const [processingId, setProcessingId] = useState<string | null>(null)
@@ -74,6 +81,7 @@ export default function ApprovalsPage() {
   const [regeneratingId, setRegeneratingId] = useState<string | null>(null)
   const [regeneratingAll, setRegeneratingAll] = useState(false)
   const [regenerateProgress, setRegenerateProgress] = useState({ current: 0, total: 0 })
+  const [filterBrand, setFilterBrand] = useState<string>('all')
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -99,7 +107,7 @@ export default function ApprovalsPage() {
         setApprovals(allApprovals)
 
         // Calculate stats
-        setStats({
+        setRawStats({
           pending: allApprovals.filter((a: Approval) => a.status === 'PENDING').length,
           approved: allApprovals.filter((a: Approval) => a.status === 'APPROVED').length,
           rejected: allApprovals.filter((a: Approval) => a.status === 'REJECTED').length,
@@ -277,7 +285,18 @@ export default function ApprovalsPage() {
     return null
   }
 
-  const filteredApprovals = approvals.filter((a) => {
+  // Filter by brand first, then by tab status
+  const brandFiltered = filterBrand === 'all'
+    ? approvals
+    : approvals.filter((a) => a.brandId === filterBrand)
+
+  const stats = {
+    pending: brandFiltered.filter((a) => a.status === 'PENDING').length,
+    approved: brandFiltered.filter((a) => a.status === 'APPROVED').length,
+    rejected: brandFiltered.filter((a) => a.status === 'REJECTED').length,
+  }
+
+  const filteredApprovals = brandFiltered.filter((a) => {
     if (activeTab === 'pending') return a.status === 'PENDING'
     if (activeTab === 'approved') return a.status === 'APPROVED'
     if (activeTab === 'rejected') return a.status === 'REJECTED'
@@ -320,16 +339,31 @@ export default function ApprovalsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Approvals</h1>
           <p className="text-muted-foreground">
             Review and approve AI-generated marketing content
           </p>
         </div>
-        <Button onClick={() => fetchData()} variant="outline" size="sm">
-          Refresh
-        </Button>
+        <div className="flex items-center gap-2">
+          {brands.length > 1 && (
+            <Select value={filterBrand} onValueChange={setFilterBrand}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="All Brands" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Brands</SelectItem>
+                {brands.map((b) => (
+                  <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+          <Button onClick={() => fetchData()} variant="outline" size="sm">
+            Refresh
+          </Button>
+        </div>
       </div>
 
       {/* Empty State - No Brands */}

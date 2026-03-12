@@ -24,6 +24,7 @@ import {
   AlertCircle,
   Copy,
   CheckCircle,
+  Share2,
 } from 'lucide-react'
 
 interface Brand {
@@ -164,6 +165,12 @@ export default function BrandDetailPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <Button variant="outline" asChild>
+            <Link href={`/brands/${brand.slug}/social`}>
+              <Share2 className="mr-2 h-4 w-4" />
+              Social Accounts
+            </Link>
+          </Button>
           <Button variant="outline" asChild>
             <Link href={`/brands/${brand.slug}/connect`}>
               <Code className="mr-2 h-4 w-4" />
@@ -324,7 +331,20 @@ export default function BrandDetailPage() {
           </div>
 
           {/* Quick Links */}
-          <div className="grid gap-4 md:grid-cols-5">
+          <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-6">
+            <Link href={`/brands/${brand.slug}/social`} className="block">
+              <Card className="hover:border-primary/50 transition-colors cursor-pointer h-full">
+                <CardContent className="p-4 flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-indigo-100 dark:bg-indigo-900/30">
+                    <Share2 className="h-5 w-5 text-indigo-600" />
+                  </div>
+                  <div>
+                    <p className="font-medium">Social Accounts</p>
+                    <p className="text-xs text-muted-foreground">Connect platforms</p>
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
             <Link href={`/brands/${brand.slug}/funding`} className="block">
               <Card className="hover:border-primary/50 transition-colors cursor-pointer h-full">
                 <CardContent className="p-4 flex items-center gap-3">
