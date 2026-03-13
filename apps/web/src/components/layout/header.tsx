@@ -149,16 +149,16 @@ export function Header({ onMenuClick, user }: HeaderProps) {
           </Button>
 
           {/* Notifications - Links to Approvals */}
-          <Link href="/approvals">
-            <Button variant="ghost" size="icon" className="relative">
+          <Button variant="ghost" size="icon" className="relative" asChild>
+            <Link href="/approvals">
               <Bell className="h-5 w-5" />
               {pendingCount > 0 && (
                 <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-primary text-primary-foreground text-xs font-medium rounded-full flex items-center justify-center px-1">
                   {pendingCount > 99 ? '99+' : pendingCount}
                 </span>
               )}
-            </Button>
-          </Link>
+            </Link>
+          </Button>
 
           {/* User Menu */}
           <DropdownMenu>
