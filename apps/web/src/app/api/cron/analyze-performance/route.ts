@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
     console.log('[Cron] Starting performance analysis...')
 
     const brands = await db.saaSBrand.findMany({
-      where: { isActive: true },
+      where: { isActive: true, deletedAt: null },
       include: {
         contentPosts: {
           where: {

@@ -183,7 +183,7 @@ export async function DELETE(
 
     await db.saaSBrand.update({
       where: { id: existingBrand.id },
-      data: { deletedAt: new Date() },
+      data: { deletedAt: new Date(), isActive: false },
     })
 
     return NextResponse.json({

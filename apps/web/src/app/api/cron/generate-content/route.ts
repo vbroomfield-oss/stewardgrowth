@@ -124,7 +124,7 @@ export async function GET(request: NextRequest) {
 
     // Get all active brands WITH their books
     const brands = await db.saaSBrand.findMany({
-      where: { isActive: true },
+      where: { isActive: true, deletedAt: null },
       include: {
         organization: true,
         books: {

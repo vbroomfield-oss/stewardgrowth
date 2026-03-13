@@ -46,16 +46,21 @@ export async function GET(request: NextRequest) {
     }
 
     // 1. Find content that needs video generation (has video script but no render ID)
+    // Fetch more than we need since we filter client-side for videoScript presence
     const needsGeneration = await db.contentPost.findMany({
       where: {
         platforms: { hasSome: VIDEO_PLATFORMS },
         status: 'AWAITING_APPROVAL',
+        brand: { isActive: true, deletedAt: null },
       },
       include: {
         brand: true,
       },
-      take: 2,
+      orderBy: { createdAt: 'desc' },
+      take: 20,
     })
+
+    console.log(`[Video] Found ${needsGeneration.length} candidate posts`)
 
     const toGenerate = needsGeneration.filter(content => {
       const platformVersions = (content.platformVersions as Record<string, any>) || {}
@@ -63,7 +68,9 @@ export async function GET(request: NextRequest) {
       if (!videoPlatform) return false
       const platformData = platformVersions[videoPlatform]
       return platformData?.videoScript && !platformData?.renderId
-    })
+    }).slice(0, 3) // Process max 3 at a time to stay within timeout
+
+    console.log(`[Video] ${toGenerate.length} posts need video generation`)
 
     for (const content of toGenerate) {
       const platformVersions = (content.platformVersions as Record<string, any>) || {}
@@ -116,6 +123,7 @@ export async function GET(request: NextRequest) {
     const allVideoPosts = await db.contentPost.findMany({
       where: {
         platforms: { hasSome: VIDEO_PLATFORMS },
+        brand: { isActive: true, deletedAt: null },
       },
     })
 
