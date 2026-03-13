@@ -4,12 +4,10 @@ const META_AUTH_URL = 'https://www.facebook.com/v18.0/dialog/oauth'
 const META_TOKEN_URL = 'https://graph.facebook.com/v18.0/oauth/access_token'
 const GRAPH_API_URL = 'https://graph.facebook.com/v18.0'
 
-// Scopes for Instagram publishing (requires Business/Creator account)
+// Scopes for Instagram - basic scopes work in dev mode, publishing scopes need App Review
 const SCOPES = [
-  'instagram_basic',
-  'instagram_content_publish',
-  'pages_show_list',
-  'pages_read_engagement',
+  'public_profile',
+  'email',
 ]
 
 export class InstagramClient implements SocialClient {

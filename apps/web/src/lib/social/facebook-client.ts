@@ -4,8 +4,8 @@ const META_AUTH_URL = 'https://www.facebook.com/v18.0/dialog/oauth'
 const META_TOKEN_URL = 'https://graph.facebook.com/v18.0/oauth/access_token'
 const GRAPH_API_URL = 'https://graph.facebook.com/v18.0'
 
-// Scopes for Facebook Page posting
-const SCOPES = ['pages_manage_posts', 'pages_read_engagement', 'pages_show_list']
+// Scopes for Facebook - basic scopes work in dev mode, page scopes need App Review
+const SCOPES = ['public_profile', 'email']
 
 export class FacebookClient implements SocialClient {
   platform = 'facebook' as const
