@@ -10,12 +10,42 @@ export type SocialPlatform =
   | 'youtube'
   | 'pinterest'
 
+export type ConnectionType = 'personal' | 'page' | 'organization'
+
 export interface SocialCredentials {
   accessToken: string
   refreshToken?: string
   expiresAt?: Date
   accountId?: string
   accountName?: string
+  // Page-level tokens (Meta platforms)
+  pageAccessToken?: string
+  pageId?: string
+  pageName?: string
+  // Organization-level (LinkedIn Company Pages)
+  organizationId?: string
+  organizationName?: string
+  // What type of account is connected
+  connectionType?: ConnectionType
+}
+
+export interface FacebookPage {
+  id: string
+  name: string
+  accessToken: string
+  category?: string
+  instagramBusinessAccount?: {
+    id: string
+    username?: string
+    name?: string
+  }
+}
+
+export interface LinkedInOrganization {
+  id: string
+  name: string
+  vanityName?: string
+  logoUrl?: string
 }
 
 export interface PostOptions {

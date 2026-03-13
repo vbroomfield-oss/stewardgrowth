@@ -5,10 +5,6 @@ import { getUserWithOrganization } from '@/lib/auth/get-user-org'
 import { createLinkedInClient } from '@/lib/social/linkedin-client'
 import { db } from '@/lib/db'
 
-/**
- * GET /api/oauth/linkedin/callback
- * Handles LinkedIn OAuth callback
- */
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
@@ -16,58 +12,52 @@ export async function GET(request: NextRequest) {
     const state = searchParams.get('state')
     const error = searchParams.get('error')
 
-    // Handle OAuth errors
     if (error) {
-      console.error('LinkedIn OAuth error:', error)
-      return NextResponse.redirect(
-        new URL(`/settings?error=linkedin_${error}`, request.url)
-      )
+      return NextResponse.redirect(new URL(`/settings?error=linkedin_${error}`, request.url))
     }
 
     if (!code || !state) {
-      return NextResponse.redirect(
-        new URL('/settings?error=linkedin_missing_params', request.url)
-      )
+      return NextResponse.redirect(new URL('/settings?error=linkedin_missing_params', request.url))
     }
 
-    // Decode state
     let stateData: { brandId: string; userId: string; timestamp: number }
     try {
       stateData = JSON.parse(Buffer.from(state, 'base64').toString('utf-8'))
     } catch {
-      return NextResponse.redirect(
-        new URL('/settings?error=linkedin_invalid_state', request.url)
-      )
+      return NextResponse.redirect(new URL('/settings?error=linkedin_invalid_state', request.url))
     }
 
-    // Verify user
     const userWithOrg = await getUserWithOrganization()
     if (!userWithOrg || userWithOrg.id !== stateData.userId) {
-      return NextResponse.redirect(
-        new URL('/login?error=session_expired', request.url)
-      )
+      return NextResponse.redirect(new URL('/login?error=session_expired', request.url))
     }
 
-    // Exchange code for tokens
     const client = createLinkedInClient()
-    const credentials = await client.handleCallback(code)
+    const result = await client.handleCallback(code)
 
-    // Save connection to database
+    const credentialsToStore: Record<string, any> = {
+      accessToken: result.accessToken,
+      refreshToken: result.refreshToken,
+      expiresAt: result.expiresAt?.toISOString(),
+      connectionType: result.connectionType || 'personal',
+    }
+
+    if (result.organizationId) {
+      credentialsToStore.organizationId = result.organizationId
+      credentialsToStore.organizationName = result.organizationName
+    }
+
     await db.adPlatformConnection.upsert({
       where: {
         brandId_platform: {
           brandId: stateData.brandId,
-          platform: 'LINKEDIN_ADS', // Using the existing enum
+          platform: 'LINKEDIN_ADS',
         },
       },
       update: {
-        credentials: {
-          accessToken: credentials.accessToken,
-          refreshToken: credentials.refreshToken,
-          expiresAt: credentials.expiresAt?.toISOString(),
-        },
-        accountId: credentials.accountId,
-        accountName: credentials.accountName,
+        credentials: credentialsToStore,
+        accountId: result.accountId,
+        accountName: result.accountName,
         status: 'CONNECTED',
         lastSyncAt: new Date(),
         lastError: null,
@@ -75,19 +65,14 @@ export async function GET(request: NextRequest) {
       create: {
         brandId: stateData.brandId,
         platform: 'LINKEDIN_ADS',
-        credentials: {
-          accessToken: credentials.accessToken,
-          refreshToken: credentials.refreshToken,
-          expiresAt: credentials.expiresAt?.toISOString(),
-        },
-        accountId: credentials.accountId,
-        accountName: credentials.accountName,
+        credentials: credentialsToStore,
+        accountId: result.accountId,
+        accountName: result.accountName,
         status: 'CONNECTED',
         lastSyncAt: new Date(),
       },
     })
 
-    // Create audit log
     await db.auditLog.create({
       data: {
         userId: userWithOrg.id,
@@ -97,21 +82,28 @@ export async function GET(request: NextRequest) {
         resourceId: stateData.brandId,
         changes: {
           platform: 'linkedin',
-          accountName: credentials.accountName,
+          accountName: result.accountName,
+          connectionType: result.connectionType,
         },
       },
     })
 
-    // Look up brand slug for redirect
     const brandForRedirect = await db.saaSBrand.findUnique({ where: { id: stateData.brandId }, select: { slug: true } })
     const redirectSlug = brandForRedirect?.slug || stateData.brandId
+
+    // If multiple organizations were returned, redirect to org selector
+    const organizations = (result as any).organizations
+    if (organizations && organizations.length > 1) {
+      return NextResponse.redirect(
+        new URL(`/brands/${redirectSlug}/settings?tab=social&selectOrg=linkedin`, request.url)
+      )
+    }
+
     return NextResponse.redirect(
       new URL(`/brands/${redirectSlug}/settings?tab=social&success=linkedin_connected`, request.url)
     )
   } catch (error) {
     console.error('LinkedIn callback error:', error)
-    return NextResponse.redirect(
-      new URL('/settings?error=linkedin_callback_failed', request.url)
-    )
+    return NextResponse.redirect(new URL('/settings?error=linkedin_callback_failed', request.url))
   }
 }

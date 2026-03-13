@@ -33,14 +33,25 @@ export async function GET(request: NextRequest) {
     }
 
     const client = createInstagramClient()
-    const credentials = await client.handleCallback(code)
+    const result = await client.handleCallback(code)
+
+    const credentialsToStore: Record<string, any> = {
+      accessToken: result.accessToken,
+      connectionType: result.connectionType || 'personal',
+    }
+
+    if (result.pageAccessToken) {
+      credentialsToStore.pageAccessToken = result.pageAccessToken
+      credentialsToStore.pageId = result.pageId
+      credentialsToStore.pageName = result.pageName
+    }
 
     await db.adPlatformConnection.upsert({
       where: { brandId_platform: { brandId: stateData.brandId, platform: 'INSTAGRAM' } },
       update: {
-        credentials: { accessToken: credentials.accessToken },
-        accountId: credentials.accountId,
-        accountName: credentials.accountName,
+        credentials: credentialsToStore,
+        accountId: result.accountId,
+        accountName: result.accountName,
         status: 'CONNECTED',
         lastSyncAt: new Date(),
         lastError: null,
@@ -48,9 +59,9 @@ export async function GET(request: NextRequest) {
       create: {
         brandId: stateData.brandId,
         platform: 'INSTAGRAM',
-        credentials: { accessToken: credentials.accessToken },
-        accountId: credentials.accountId,
-        accountName: credentials.accountName,
+        credentials: credentialsToStore,
+        accountId: result.accountId,
+        accountName: result.accountName,
         status: 'CONNECTED',
         lastSyncAt: new Date(),
       },
@@ -63,14 +74,28 @@ export async function GET(request: NextRequest) {
         action: 'platform.connected',
         resource: 'AdPlatformConnection',
         resourceId: stateData.brandId,
-        changes: { platform: 'instagram', accountName: credentials.accountName },
+        changes: {
+          platform: 'instagram',
+          accountName: result.accountName,
+          connectionType: result.connectionType,
+        },
       },
     })
 
-    // Look up brand slug for redirect
     const brandForRedirect = await db.saaSBrand.findUnique({ where: { id: stateData.brandId }, select: { slug: true } })
     const redirectSlug = brandForRedirect?.slug || stateData.brandId
-    return NextResponse.redirect(new URL(`/brands/${redirectSlug}/settings?tab=social&success=instagram_connected`, request.url))
+
+    // If multiple IG accounts were returned, redirect to account selector
+    const igAccounts = (result as any).igAccounts
+    if (igAccounts && igAccounts.length > 1) {
+      return NextResponse.redirect(
+        new URL(`/brands/${redirectSlug}/settings?tab=social&selectPage=instagram`, request.url)
+      )
+    }
+
+    return NextResponse.redirect(
+      new URL(`/brands/${redirectSlug}/settings?tab=social&success=instagram_connected`, request.url)
+    )
   } catch (error) {
     console.error('Instagram callback error:', error)
     return NextResponse.redirect(new URL('/settings?error=instagram_callback_failed', request.url))

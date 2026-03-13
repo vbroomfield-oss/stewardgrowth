@@ -1,11 +1,11 @@
 import type { SocialClient, SocialCredentials, PostOptions, PostResult } from './types'
+import { getThreadsScopes, useThreadsOAuth } from './scope-config'
 
 const META_AUTH_URL = 'https://www.facebook.com/v18.0/dialog/oauth'
+const THREADS_AUTH_URL = 'https://www.threads.net/oauth/authorize'
 const META_TOKEN_URL = 'https://graph.facebook.com/v18.0/oauth/access_token'
+const THREADS_TOKEN_URL = 'https://graph.threads.net/oauth/access_token'
 const THREADS_API_URL = 'https://graph.threads.net/v1.0'
-
-// Scopes for Threads - basic scopes work in dev mode, threads scopes need App Review
-const SCOPES = ['public_profile', 'email']
 
 export class ThreadsClient implements SocialClient {
   platform = 'threads' as const
@@ -20,33 +20,42 @@ export class ThreadsClient implements SocialClient {
     return true
   }
 
-  /**
-   * Get OAuth authorization URL
-   */
   getAuthUrl(state: string): string {
     const appId = process.env.META_APP_ID
     const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL || 'https://stewardgrowth.vercel.app'}/api/oauth/threads/callback`
+    const scopes = getThreadsScopes()
 
+    if (useThreadsOAuth()) {
+      // Use Threads-specific OAuth endpoint (for approved apps)
+      const params = new URLSearchParams({
+        client_id: appId!,
+        redirect_uri: redirectUri,
+        state,
+        scope: scopes.join(','),
+        response_type: 'code',
+      })
+      return `${THREADS_AUTH_URL}?${params.toString()}`
+    }
+
+    // Use Facebook OAuth endpoint (basic/dev mode)
     const params = new URLSearchParams({
       client_id: appId!,
       redirect_uri: redirectUri,
       state,
-      scope: SCOPES.join(','),
+      scope: scopes.join(','),
       response_type: 'code',
     })
-
     return `${META_AUTH_URL}?${params.toString()}`
   }
 
-  /**
-   * Exchange authorization code for access token
-   */
   async handleCallback(code: string): Promise<SocialCredentials> {
     const appId = process.env.META_APP_ID
     const appSecret = process.env.META_APP_SECRET
     const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL || 'https://stewardgrowth.vercel.app'}/api/oauth/threads/callback`
 
-    // Exchange code for access token
+    // Use the appropriate token endpoint based on scope mode
+    const tokenUrl = useThreadsOAuth() ? THREADS_TOKEN_URL : META_TOKEN_URL
+
     const tokenParams = new URLSearchParams({
       client_id: appId!,
       client_secret: appSecret!,
@@ -55,7 +64,7 @@ export class ThreadsClient implements SocialClient {
       grant_type: 'authorization_code',
     })
 
-    const tokenResponse = await fetch(`${META_TOKEN_URL}?${tokenParams.toString()}`)
+    const tokenResponse = await fetch(`${tokenUrl}?${tokenParams.toString()}`)
 
     if (!tokenResponse.ok) {
       const error = await tokenResponse.text()
@@ -64,13 +73,32 @@ export class ThreadsClient implements SocialClient {
 
     const tokenData = await tokenResponse.json()
 
+    // Try to get long-lived token for Threads
+    let accessToken = tokenData.access_token
+    if (useThreadsOAuth()) {
+      try {
+        const llParams = new URLSearchParams({
+          grant_type: 'th_exchange_token',
+          client_secret: appSecret!,
+          access_token: tokenData.access_token,
+        })
+        const llResponse = await fetch(`https://graph.threads.net/access_token?${llParams.toString()}`)
+        if (llResponse.ok) {
+          const llData = await llResponse.json()
+          accessToken = llData.access_token || accessToken
+        }
+      } catch {
+        // Use short-lived token
+      }
+    }
+
     // Try Threads profile first, fall back to Facebook profile
     let accountName = 'Threads User'
     let accountId = ''
 
     try {
       const profileResponse = await fetch(
-        `${THREADS_API_URL}/me?fields=id,username,name&access_token=${tokenData.access_token}`
+        `${THREADS_API_URL}/me?fields=id,username,name&access_token=${accessToken}`
       )
       if (profileResponse.ok) {
         const profile = await profileResponse.json()
@@ -78,13 +106,13 @@ export class ThreadsClient implements SocialClient {
         accountId = profile.id
       }
     } catch {
-      // Threads API not available - try Facebook profile
+      // Threads API not available
     }
 
     if (!accountId) {
       try {
         const fbProfile = await fetch(
-          `https://graph.facebook.com/v18.0/me?fields=id,name&access_token=${tokenData.access_token}`
+          `https://graph.facebook.com/v18.0/me?fields=id,name&access_token=${accessToken}`
         )
         if (fbProfile.ok) {
           const profile = await fbProfile.json()
@@ -97,19 +125,17 @@ export class ThreadsClient implements SocialClient {
     }
 
     this.credentials = {
-      accessToken: tokenData.access_token,
+      accessToken,
       refreshToken: tokenData.refresh_token,
       expiresAt: tokenData.expires_in ? new Date(Date.now() + tokenData.expires_in * 1000) : undefined,
       accountId,
       accountName,
+      connectionType: 'personal',
     }
 
     return this.credentials
   }
 
-  /**
-   * Post to Threads
-   */
   async post(options: PostOptions): Promise<PostResult> {
     if (!this.isConnected()) {
       return { success: false, error: 'Not connected to Threads' }
@@ -126,7 +152,6 @@ export class ThreadsClient implements SocialClient {
         access_token: accessToken,
       }
 
-      // Add image if provided
       if (options.mediaUrls && options.mediaUrls.length > 0) {
         containerParams.media_type = 'IMAGE'
         containerParams.image_url = options.mediaUrls[0]

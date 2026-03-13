@@ -41,6 +41,10 @@
     {
       "path": "/api/cron/analyze-performance",
       "schedule": "0 */6 * * *"
+    },
+    {
+      "path": "/api/cron/sync-calls",
+      "schedule": "0 */2 * * *"
     }
   ]
 }

@@ -1,11 +1,9 @@
-import type { SocialClient, SocialCredentials, PostOptions, PostResult } from './types'
+import type { SocialClient, SocialCredentials, PostOptions, PostResult, FacebookPage } from './types'
+import { getFacebookScopes } from './scope-config'
 
 const META_AUTH_URL = 'https://www.facebook.com/v18.0/dialog/oauth'
 const META_TOKEN_URL = 'https://graph.facebook.com/v18.0/oauth/access_token'
 const GRAPH_API_URL = 'https://graph.facebook.com/v18.0'
-
-// Scopes for Facebook - basic scopes work in dev mode, page scopes need App Review
-const SCOPES = ['public_profile', 'email']
 
 export class FacebookClient implements SocialClient {
   platform = 'facebook' as const
@@ -17,13 +15,9 @@ export class FacebookClient implements SocialClient {
 
   isConnected(): boolean {
     if (!this.credentials?.accessToken) return false
-    // Facebook tokens can be long-lived, so we don't always check expiry
     return true
   }
 
-  /**
-   * Get OAuth authorization URL
-   */
   getAuthUrl(state: string): string {
     const appId = process.env.META_APP_ID
     const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL || 'https://stewardgrowth.vercel.app'}/api/oauth/facebook/callback`
@@ -32,7 +26,7 @@ export class FacebookClient implements SocialClient {
       client_id: appId!,
       redirect_uri: redirectUri,
       state,
-      scope: SCOPES.join(','),
+      scope: getFacebookScopes().join(','),
       response_type: 'code',
     })
 
@@ -40,14 +34,65 @@ export class FacebookClient implements SocialClient {
   }
 
   /**
-   * Exchange authorization code for access token
+   * Exchange for a long-lived token (~60 days instead of ~1 hour)
    */
-  async handleCallback(code: string): Promise<SocialCredentials> {
+  async exchangeForLongLivedToken(shortToken: string): Promise<string> {
+    const appId = process.env.META_APP_ID
+    const appSecret = process.env.META_APP_SECRET
+
+    const params = new URLSearchParams({
+      grant_type: 'fb_exchange_token',
+      client_id: appId!,
+      client_secret: appSecret!,
+      fb_exchange_token: shortToken,
+    })
+
+    const response = await fetch(`${META_TOKEN_URL}?${params.toString()}`)
+    if (!response.ok) {
+      console.warn('Failed to exchange for long-lived token, using short-lived')
+      return shortToken
+    }
+
+    const data = await response.json()
+    return data.access_token || shortToken
+  }
+
+  /**
+   * Fetch all Facebook Pages the user manages
+   */
+  async getPages(accessToken: string): Promise<FacebookPage[]> {
+    try {
+      const response = await fetch(
+        `${GRAPH_API_URL}/me/accounts?fields=id,name,access_token,category,instagram_business_account&access_token=${accessToken}`
+      )
+      if (!response.ok) return []
+
+      const data = await response.json()
+      const pages: FacebookPage[] = (data.data || []).map((page: any) => ({
+        id: page.id,
+        name: page.name,
+        accessToken: page.access_token,
+        category: page.category,
+        instagramBusinessAccount: page.instagram_business_account
+          ? { id: page.instagram_business_account.id }
+          : undefined,
+      }))
+
+      return pages
+    } catch {
+      return []
+    }
+  }
+
+  /**
+   * Exchange authorization code for access token.
+   * Returns credentials with pages array for selection when multiple pages exist.
+   */
+  async handleCallback(code: string): Promise<SocialCredentials & { pages?: FacebookPage[] }> {
     const appId = process.env.META_APP_ID
     const appSecret = process.env.META_APP_SECRET
     const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL || 'https://stewardgrowth.vercel.app'}/api/oauth/facebook/callback`
 
-    // Exchange code for user access token
     const tokenParams = new URLSearchParams({
       client_id: appId!,
       client_secret: appSecret!,
@@ -64,46 +109,55 @@ export class FacebookClient implements SocialClient {
 
     const tokenData = await tokenResponse.json()
 
+    // Exchange for long-lived user token
+    const longLivedToken = await this.exchangeForLongLivedToken(tokenData.access_token)
+
     // Get user profile
     const profileResponse = await fetch(
-      `${GRAPH_API_URL}/me?fields=id,name&access_token=${tokenData.access_token}`
+      `${GRAPH_API_URL}/me?fields=id,name&access_token=${longLivedToken}`
     )
     const profile = profileResponse.ok ? await profileResponse.json() : { id: 'unknown', name: 'Facebook User' }
 
-    // Try to get user's pages (requires pages_show_list scope - may not be available in dev mode)
-    let accountToken = tokenData.access_token
-    let accountId = profile.id
-    let accountName = profile.name
+    // Try to get user's pages
+    const pages = await this.getPages(longLivedToken)
 
-    try {
-      const pagesResponse = await fetch(
-        `${GRAPH_API_URL}/me/accounts?access_token=${tokenData.access_token}`
-      )
-      if (pagesResponse.ok) {
-        const pagesData = await pagesResponse.json()
-        const pages = pagesData.data || []
-        if (pages.length > 0) {
-          // Use page token for posting if available
-          accountToken = pages[0].access_token
-          accountId = pages[0].id
-          accountName = pages[0].name
-        }
+    if (pages.length === 1) {
+      // Auto-select single page
+      this.credentials = {
+        accessToken: longLivedToken,
+        pageAccessToken: pages[0].accessToken,
+        pageId: pages[0].id,
+        pageName: pages[0].name,
+        accountId: pages[0].id,
+        accountName: pages[0].name,
+        connectionType: 'page',
       }
-    } catch {
-      // Pages not available - use user token (dev mode)
+      return this.credentials
     }
 
+    if (pages.length > 1) {
+      // Store user token and return pages for selection
+      this.credentials = {
+        accessToken: longLivedToken,
+        accountId: profile.id,
+        accountName: profile.name,
+        connectionType: 'personal', // Will be upgraded after page selection
+      }
+      return { ...this.credentials, pages }
+    }
+
+    // No pages available (basic scopes) — store as personal profile
     this.credentials = {
-      accessToken: accountToken,
-      accountId,
-      accountName,
+      accessToken: longLivedToken,
+      accountId: profile.id,
+      accountName: profile.name,
+      connectionType: 'personal',
     }
-
     return this.credentials
   }
 
   /**
-   * Post to Facebook Page
+   * Post to Facebook Page (uses page token if available)
    */
   async post(options: PostOptions): Promise<PostResult> {
     if (!this.isConnected()) {
@@ -111,14 +165,15 @@ export class FacebookClient implements SocialClient {
     }
 
     try {
-      const pageId = this.credentials!.accountId
+      // Use page token for posting if available, otherwise user token
+      const postToken = this.credentials!.pageAccessToken || this.credentials!.accessToken
+      const pageId = this.credentials!.pageId || this.credentials!.accountId
 
       const postData: Record<string, string> = {
         message: options.content,
-        access_token: this.credentials!.accessToken,
+        access_token: postToken,
       }
 
-      // Add link if provided
       if (options.link) {
         postData.link = options.link
       }

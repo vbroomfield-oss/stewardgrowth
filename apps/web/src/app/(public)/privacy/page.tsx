@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
   title: 'Privacy Policy | StewardGrowth',
-  description: 'StewardGrowth Privacy Policy',
+  description: 'StewardGrowth Internal Tool Privacy Policy',
 }
 
 export default function PrivacyPage() {
@@ -10,141 +10,145 @@ export default function PrivacyPage() {
     <div className="prose dark:prose-invert max-w-none">
       <h1>Privacy Policy</h1>
       <p className="text-muted-foreground">
-        Last updated: February 2026
-      </p>
-      <p className="text-sm bg-yellow-50 dark:bg-yellow-950/30 border border-yellow-200 dark:border-yellow-900 p-4 rounded-lg">
-        [CUSTOMIZE BEFORE LAUNCH] — This document should be reviewed by legal counsel before going live.
+        Last updated: March 2026
       </p>
 
-      <h2>What Data We Collect</h2>
+      <h2>1. Overview</h2>
       <p>
-        StewardGrowth, operated by B.Ent Group, collects the following types of information:
+        This Privacy Policy describes how StewardGrowth, an internal marketing and growth tool operated by
+        B.Ent Group (&quot;the Company,&quot; &quot;we,&quot; &quot;us,&quot; or &quot;our&quot;), collects,
+        stores, and processes data. This policy applies to all authorized users of the Platform, including
+        employees, contractors, and designated personnel.
       </p>
+
+      <h2>2. Data We Collect</h2>
+
       <h3>Account Information</h3>
       <ul>
-        <li>Name, email address, and password (stored securely via Supabase Auth)</li>
-        <li>Organization name and team member information</li>
-        <li>Billing information processed through Stripe (we do not store credit card numbers)</li>
+        <li>Name and email address (authenticated via Supabase Auth)</li>
+        <li>Organization role and team membership</li>
+        <li>User preferences and Platform settings</li>
       </ul>
-      <h3>Usage Data</h3>
+
+      <h3>Brand and Marketing Data</h3>
       <ul>
-        <li>Pages visited, features used, and actions taken within the platform</li>
-        <li>Content you create, generate, or upload</li>
-        <li>Brand profiles, marketing goals, and audience data you provide</li>
-        <li>Analytics events tracked through our SDK on your websites</li>
+        <li>Brand profiles, voice settings, and marketing goals</li>
+        <li>Content drafts, published posts, and campaign data</li>
+        <li>Analytics metrics, KPIs, and attribution data collected from connected platforms</li>
+        <li>Audience and engagement data retrieved from social media APIs</li>
       </ul>
-      <h3>Social Platform Tokens</h3>
+
+      <h3>Social Media Credentials</h3>
       <ul>
-        <li>OAuth access tokens and refresh tokens for connected social platforms (Twitter/X, LinkedIn, Facebook, Instagram, TikTok, YouTube, Pinterest)</li>
-        <li>These tokens are stored encrypted and are used solely to post content and retrieve analytics on your behalf</li>
+        <li>OAuth access tokens and refresh tokens for connected social accounts (Facebook, Instagram, LinkedIn, Twitter/X, TikTok, YouTube, Threads)</li>
+        <li>Social platform user IDs and page/account identifiers</li>
+        <li>These credentials are stored in encrypted form within our database and are used exclusively for authorized content publishing and analytics retrieval</li>
       </ul>
+
       <h3>AI Interaction Data</h3>
       <ul>
-        <li>Prompts and content sent to AI services for content generation</li>
-        <li>Chat conversations with the AI marketing advisor</li>
+        <li>Prompts, instructions, and content submitted to AI services for generation or analysis</li>
+        <li>Conversations with the AI marketing advisor</li>
+        <li>Generated outputs including text, images, audio, and video</li>
       </ul>
 
-      <h2>How We Use Your Data</h2>
+      <h3>Platform Usage Data</h3>
       <ul>
-        <li>To provide, maintain, and improve the Service</li>
-        <li>To generate AI-powered content, recommendations, and marketing insights</li>
-        <li>To publish content to connected social media platforms on your behalf</li>
-        <li>To track analytics events and compute marketing attribution</li>
-        <li>To send transactional emails (password resets, approval notifications, weekly digests)</li>
-        <li>To process payments and manage subscriptions</li>
-        <li>To provide customer support</li>
+        <li>Pages visited and features used within the Platform</li>
+        <li>Actions taken (content created, posts scheduled, approvals made)</li>
+        <li>Session information and login timestamps</li>
       </ul>
 
-      <h2>Third-Party Services</h2>
+      <h2>3. How Data Is Stored</h2>
       <p>
-        We use the following third-party services that may process your data:
+        All Platform data is stored in a Supabase-hosted PostgreSQL database with the following protections:
       </p>
       <ul>
-        <li><strong>Supabase</strong> — Authentication, database hosting, and file storage</li>
-        <li><strong>OpenAI</strong> — AI content generation (GPT-4o, DALL-E image generation)</li>
-        <li><strong>Anthropic</strong> — AI marketing advisor and recommendations (Claude)</li>
-        <li><strong>Meta</strong> — Facebook and Instagram integration</li>
-        <li><strong>Google</strong> — Google Ads, Analytics, YouTube, and Search Console integration</li>
-        <li><strong>Resend</strong> — Transactional email delivery</li>
-        <li><strong>Stripe</strong> — Payment processing</li>
-        <li><strong>Vercel</strong> — Application hosting</li>
-        <li><strong>Inngest</strong> — Background job processing</li>
-      </ul>
-      <p>
-        Each of these services has their own privacy policies. We encourage you to review them.
-      </p>
-
-      <h2>Data Retention</h2>
-      <ul>
-        <li>Active account data is retained for as long as your account is active</li>
-        <li>Upon account deletion, personal data is removed within 30 days</li>
-        <li>Analytics event data may be retained in anonymized form for aggregate reporting</li>
-        <li>Backup data may be retained for up to 90 days after deletion</li>
-        <li>We may retain certain data as required by law or for legitimate business purposes</li>
+        <li>Data encrypted in transit via TLS/HTTPS and at rest via database-level encryption</li>
+        <li>Row-level security (RLS) policies enforcing organization-based data isolation</li>
+        <li>Social media tokens and API credentials stored using application-level encryption</li>
+        <li>Authentication managed through Supabase Auth with secure session handling</li>
+        <li>File uploads (images, media assets) stored in Supabase Storage with access controls</li>
       </ul>
 
-      <h2>Your Rights</h2>
-      <h3>For all users</h3>
-      <ul>
-        <li>Access your personal data stored in the Service</li>
-        <li>Correct inaccurate personal data</li>
-        <li>Delete your account and associated data</li>
-        <li>Export your data in a portable format</li>
-        <li>Disconnect third-party platform integrations at any time</li>
-      </ul>
-      <h3>GDPR (European Economic Area)</h3>
+      <h2>4. Third-Party Services</h2>
       <p>
-        If you are located in the EEA, you have additional rights under the General Data Protection Regulation,
-        including the right to data portability, the right to restrict processing, and the right to object to
-        processing. To exercise these rights, contact us at{' '}
-        <a href="mailto:privacy@bentgroup.co">privacy@bentgroup.co</a>.
-      </p>
-      <h3>CCPA (California)</h3>
-      <p>
-        If you are a California resident, you have the right to know what personal information we collect,
-        request deletion of your data, and opt out of the sale of your personal information.
-        We do not sell personal information. To exercise your rights, contact us at{' '}
-        <a href="mailto:privacy@bentgroup.co">privacy@bentgroup.co</a>.
-      </p>
-
-      <h2>Cookies and Tracking</h2>
-      <p>
-        We use cookies and similar technologies for:
+        The Platform transmits data to the following third-party services as part of its core functionality:
       </p>
       <ul>
-        <li><strong>Authentication</strong> — Session cookies to keep you logged in (essential)</li>
-        <li><strong>Preferences</strong> — Remembering your settings like theme and sidebar state</li>
-        <li><strong>Analytics</strong> — Understanding how the Service is used to improve it</li>
+        <li><strong>OpenAI</strong> -- Text generation (GPT-4o) and image generation (DALL-E). Content prompts and brand context are sent to OpenAI for processing.</li>
+        <li><strong>Anthropic (Claude)</strong> -- AI marketing advisor, content analysis, and strategic recommendations. Conversation data and brand information are sent for processing.</li>
+        <li><strong>ElevenLabs</strong> -- Voice synthesis and audio generation. Text scripts are sent for voice conversion.</li>
+        <li><strong>Shotstack</strong> -- Video rendering and production. Media assets and composition instructions are sent for video creation.</li>
+        <li><strong>Meta APIs (Facebook/Instagram)</strong> -- Content publishing, analytics retrieval, and ad management for connected Meta accounts.</li>
+        <li><strong>LinkedIn API</strong> -- Content publishing and engagement data retrieval for connected LinkedIn accounts.</li>
+        <li><strong>Google Analytics</strong> -- Website analytics tracking and reporting for connected properties.</li>
+        <li><strong>Telnyx</strong> -- Telephony and SMS/messaging services for communication features.</li>
+        <li><strong>Supabase</strong> -- Database hosting, authentication, file storage, and real-time features.</li>
+        <li><strong>Vercel</strong> -- Application hosting and serverless function execution.</li>
+        <li><strong>Inngest</strong> -- Background job processing for scheduled posts and async operations.</li>
       </ul>
       <p>
-        The StewardGrowth tracking SDK that you install on your own websites will set cookies to track
-        visitor sessions and attribution. You are responsible for disclosing this tracking in your own
-        website&apos;s privacy policy and cookie consent mechanisms.
+        Each third-party service processes data according to its own privacy policy and data handling terms.
+        The Company selects third-party providers that maintain commercially reasonable security practices.
       </p>
 
-      <h2>Security</h2>
+      <h2>5. How We Use Your Data</h2>
+      <ul>
+        <li>To provide and operate the Platform&apos;s core features for authorized users</li>
+        <li>To generate AI-powered content, media, and marketing recommendations</li>
+        <li>To publish content to connected social media accounts on behalf of Company brands</li>
+        <li>To retrieve and display analytics, engagement metrics, and performance data</li>
+        <li>To manage content approval workflows and team collaboration</li>
+        <li>To send system notifications (approval requests, scheduled post confirmations, error alerts)</li>
+        <li>To maintain Platform security and audit access logs</li>
+        <li>To improve Platform functionality and fix issues</li>
+      </ul>
+
+      <h2>6. Data Retention</h2>
+      <ul>
+        <li>Account data is retained for as long as the user has active access to the Platform</li>
+        <li>Brand and campaign data is retained for as long as the associated brand is active within the Platform</li>
+        <li>When user access is revoked, personal account data is removed within 30 days</li>
+        <li>Analytics and performance data may be retained in aggregate form for historical reporting</li>
+        <li>Audit logs are retained in accordance with the Company&apos;s internal data retention policies</li>
+        <li>Database backups may retain data for up to 90 days after deletion from the live system</li>
+      </ul>
+
+      <h2>7. Security Measures</h2>
       <p>
-        We implement commercially reasonable technical and organizational security measures including:
+        We implement the following security measures to protect data within the Platform:
       </p>
       <ul>
         <li>Encrypted data in transit (TLS/HTTPS) and at rest</li>
-        <li>Secure authentication via Supabase with row-level security</li>
-        <li>API key encryption for stored third-party credentials</li>
-        <li>Role-based access control within organizations</li>
-        <li>Audit logging for sensitive operations</li>
+        <li>Supabase Auth with row-level security for data isolation between organizations</li>
+        <li>Application-level encryption for stored third-party API credentials and OAuth tokens</li>
+        <li>Role-based access control within organizations (owner, admin, member roles)</li>
+        <li>Audit logging for sensitive operations including token connections and content publishing</li>
+        <li>Secure environment variable management for all API keys and secrets</li>
       </ul>
 
-      <h2>Changes to This Policy</h2>
+      <h2>8. Cookies and Session Data</h2>
       <p>
-        We may update this Privacy Policy from time to time. We will notify you of material changes by
-        email or through a notice on the Service. Your continued use of the Service after changes become
-        effective constitutes acceptance of the updated policy.
+        The Platform uses cookies and local storage for:
+      </p>
+      <ul>
+        <li><strong>Authentication</strong> -- Session cookies managed by Supabase Auth to maintain login state</li>
+        <li><strong>Preferences</strong> -- User interface settings such as theme, sidebar state, and display preferences</li>
+      </ul>
+
+      <h2>9. Changes to This Policy</h2>
+      <p>
+        This Privacy Policy may be updated as the Platform evolves or as new third-party services are
+        integrated. Users will be notified of material changes through the Platform or via email.
+        Continued use of the Platform after changes are communicated constitutes acceptance of the
+        updated policy.
       </p>
 
-      <h2>Contact</h2>
+      <h2>10. Contact</h2>
       <p>
-        For questions about this Privacy Policy or to exercise your data rights, contact us at:{' '}
-        <a href="mailto:privacy@bentgroup.co">privacy@bentgroup.co</a>
+        For questions about this Privacy Policy or data handling within the Platform, contact:{' '}
+        <a href="mailto:legal@bentgroup.co">legal@bentgroup.co</a>
       </p>
       <p>
         B.Ent Group<br />

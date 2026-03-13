@@ -1,11 +1,9 @@
-import type { SocialClient, SocialCredentials, PostOptions, PostResult } from './types'
+import type { SocialClient, SocialCredentials, PostOptions, PostResult, LinkedInOrganization } from './types'
+import { getLinkedInScopes, getLinkedInScopeMode } from './scope-config'
 
 const LINKEDIN_AUTH_URL = 'https://www.linkedin.com/oauth/v2/authorization'
 const LINKEDIN_TOKEN_URL = 'https://www.linkedin.com/oauth/v2/accessToken'
 const LINKEDIN_API_URL = 'https://api.linkedin.com/v2'
-
-// Required scopes for posting
-const SCOPES = ['openid', 'profile', 'email', 'w_member_social']
 
 export class LinkedInClient implements SocialClient {
   platform = 'linkedin' as const
@@ -21,9 +19,6 @@ export class LinkedInClient implements SocialClient {
     return true
   }
 
-  /**
-   * Get OAuth authorization URL
-   */
   getAuthUrl(state: string): string {
     const clientId = process.env.LINKEDIN_CLIENT_ID
     const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL || 'https://stewardgrowth.vercel.app'}/api/oauth/linkedin/callback`
@@ -33,16 +28,80 @@ export class LinkedInClient implements SocialClient {
       client_id: clientId!,
       redirect_uri: redirectUri,
       state,
-      scope: SCOPES.join(' '),
+      scope: getLinkedInScopes().join(' '),
     })
 
     return `${LINKEDIN_AUTH_URL}?${params.toString()}`
   }
 
   /**
-   * Exchange authorization code for access token
+   * Fetch organizations the user is admin of
    */
-  async handleCallback(code: string): Promise<SocialCredentials> {
+  async getOrganizations(accessToken: string): Promise<LinkedInOrganization[]> {
+    if (getLinkedInScopeMode() !== 'organization') return []
+
+    try {
+      // Get organization ACLs (admin roles)
+      const response = await fetch(
+        `${LINKEDIN_API_URL}/organizationalEntityAcls?q=roleAssignee&role=ADMINISTRATOR&projection=(elements*(organizationalTarget))`,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            'X-Restli-Protocol-Version': '2.0.0',
+          },
+        }
+      )
+
+      if (!response.ok) return []
+
+      const data = await response.json()
+      const elements = data.elements || []
+
+      const orgs: LinkedInOrganization[] = []
+      for (const element of elements) {
+        const orgUrn = element.organizationalTarget
+        if (!orgUrn) continue
+
+        // Extract org ID from URN (urn:li:organization:12345)
+        const orgId = orgUrn.split(':').pop()
+        if (!orgId) continue
+
+        // Fetch org details
+        try {
+          const orgResponse = await fetch(
+            `${LINKEDIN_API_URL}/organizations/${orgId}?projection=(id,localizedName,vanityName)`,
+            {
+              headers: {
+                Authorization: `Bearer ${accessToken}`,
+                'X-Restli-Protocol-Version': '2.0.0',
+              },
+            }
+          )
+
+          if (orgResponse.ok) {
+            const orgData = await orgResponse.json()
+            orgs.push({
+              id: orgId,
+              name: orgData.localizedName || `Organization ${orgId}`,
+              vanityName: orgData.vanityName,
+            })
+          }
+        } catch {
+          // Skip this org
+        }
+      }
+
+      return orgs
+    } catch {
+      return []
+    }
+  }
+
+  /**
+   * Exchange authorization code for access token.
+   * Returns credentials with organizations list for selection when available.
+   */
+  async handleCallback(code: string): Promise<SocialCredentials & { organizations?: LinkedInOrganization[] }> {
     const clientId = process.env.LINKEDIN_CLIENT_ID
     const clientSecret = process.env.LINKEDIN_CLIENT_SECRET
     const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL || 'https://stewardgrowth.vercel.app'}/api/oauth/linkedin/callback`
@@ -86,19 +145,52 @@ export class LinkedInClient implements SocialClient {
       accountId = profile.sub
     }
 
+    // Check for organizations if in organization mode
+    const organizations = await this.getOrganizations(data.access_token)
+
+    if (organizations.length === 1) {
+      // Auto-select single org
+      this.credentials = {
+        accessToken: data.access_token,
+        refreshToken: data.refresh_token,
+        expiresAt: new Date(Date.now() + data.expires_in * 1000),
+        accountId: organizations[0].id,
+        accountName: organizations[0].name,
+        organizationId: organizations[0].id,
+        organizationName: organizations[0].name,
+        connectionType: 'organization',
+      }
+      return this.credentials
+    }
+
+    if (organizations.length > 1) {
+      // Return orgs for selection
+      this.credentials = {
+        accessToken: data.access_token,
+        refreshToken: data.refresh_token,
+        expiresAt: new Date(Date.now() + data.expires_in * 1000),
+        accountId,
+        accountName,
+        connectionType: 'personal',
+      }
+      return { ...this.credentials, organizations }
+    }
+
+    // Personal profile mode
     this.credentials = {
       accessToken: data.access_token,
       refreshToken: data.refresh_token,
       expiresAt: new Date(Date.now() + data.expires_in * 1000),
       accountId,
       accountName,
+      connectionType: 'personal',
     }
 
     return this.credentials
   }
 
   /**
-   * Post content to LinkedIn
+   * Post content to LinkedIn — as organization if connected, otherwise personal
    */
   async post(options: PostOptions): Promise<PostResult> {
     if (!this.isConnected()) {
@@ -106,19 +198,26 @@ export class LinkedInClient implements SocialClient {
     }
 
     try {
-      // Get user URN
-      const userResponse = await fetch(`${LINKEDIN_API_URL}/userinfo`, {
-        headers: {
-          Authorization: `Bearer ${this.credentials!.accessToken}`,
-        },
-      })
+      // Determine author URN based on connection type
+      let authorUrn: string
 
-      if (!userResponse.ok) {
-        return { success: false, error: 'Failed to get LinkedIn user info' }
+      if (this.credentials!.connectionType === 'organization' && this.credentials!.organizationId) {
+        authorUrn = `urn:li:organization:${this.credentials!.organizationId}`
+      } else {
+        // Need to get person URN
+        const userResponse = await fetch(`${LINKEDIN_API_URL}/userinfo`, {
+          headers: {
+            Authorization: `Bearer ${this.credentials!.accessToken}`,
+          },
+        })
+
+        if (!userResponse.ok) {
+          return { success: false, error: 'Failed to get LinkedIn user info' }
+        }
+
+        const user = await userResponse.json()
+        authorUrn = `urn:li:person:${user.sub}`
       }
-
-      const user = await userResponse.json()
-      const authorUrn = `urn:li:person:${user.sub}`
 
       // Build share content
       const shareContent: any = {
@@ -137,7 +236,6 @@ export class LinkedInClient implements SocialClient {
         },
       }
 
-      // Add link if provided
       if (options.link) {
         shareContent.specificContent['com.linkedin.ugc.ShareContent'].shareMediaCategory = 'ARTICLE'
         shareContent.specificContent['com.linkedin.ugc.ShareContent'].media = [
@@ -177,9 +275,6 @@ export class LinkedInClient implements SocialClient {
   }
 }
 
-/**
- * Create LinkedIn client from stored credentials
- */
 export function createLinkedInClient(credentials?: SocialCredentials): LinkedInClient {
   return new LinkedInClient(credentials)
 }

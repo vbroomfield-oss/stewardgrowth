@@ -35,6 +35,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { getPlatformColor, getPlatformIcon } from '@/components/social/platform-preview'
+import { PageSelectorModal } from '@/components/social/page-selector-modal'
 import Link from 'next/link'
 
 interface Brand {
@@ -90,6 +91,7 @@ function BrandSettingsContent() {
   const [logoStatus, setLogoStatus] = useState<'idle' | 'loading' | 'loaded' | 'error'>('idle')
   const [socialConnections, setSocialConnections] = useState<PlatformConnection[]>([])
   const [disconnectingPlatform, setDisconnectingPlatform] = useState<string | null>(null)
+  const [pageSelectorPlatform, setPageSelectorPlatform] = useState<'facebook' | 'instagram' | 'linkedin' | null>(null)
 
   // Form state
   const [formData, setFormData] = useState({
@@ -108,16 +110,25 @@ function BrandSettingsContent() {
     fetchBrand()
   }, [slug])
 
-  // Show toast for OAuth callback results
+  // Show toast for OAuth callback results and handle page/org selection
   useEffect(() => {
     const success = searchParams.get('success')
     const oauthError = searchParams.get('error')
+    const selectPage = searchParams.get('selectPage')
+    const selectOrg = searchParams.get('selectOrg')
+
     if (success) {
       const platform = success.replace('_connected', '').replace('_', ' ')
       toast({ title: 'Connected!', description: `${platform.charAt(0).toUpperCase() + platform.slice(1)} has been connected successfully.` })
     }
     if (oauthError) {
       toast({ title: 'Connection Failed', description: `OAuth error: ${oauthError}`, variant: 'destructive' })
+    }
+    if (selectPage === 'facebook' || selectPage === 'instagram') {
+      setPageSelectorPlatform(selectPage)
+    }
+    if (selectOrg === 'linkedin') {
+      setPageSelectorPlatform('linkedin')
     }
   }, [searchParams])
 
@@ -858,11 +869,28 @@ function BrandSettingsContent() {
               </CardDescription>
             </CardHeader>
             <CardContent>
+              {/* Brand Account Guidance Banner */}
+              <div className="mb-4 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+                <p className="text-sm text-amber-800 dark:text-amber-200 font-medium">
+                  Connect each brand to its own social accounts
+                </p>
+                <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">
+                  When connecting, log into the brand&apos;s dedicated account (e.g., the {brand.name} Facebook Page admin,
+                  the @{brand.slug} Twitter account) — not your personal profile. This ensures all marketing posts
+                  go out from the brand&apos;s perspective.
+                </p>
+              </div>
+
               <div className="grid md:grid-cols-2 gap-3">
                 {SOCIAL_PLATFORMS.map((platform) => {
                   const connection = getConnection(platform.key)
                   const isConnected = connection?.status === 'CONNECTED'
                   const hasError = connection?.status === 'ERROR' || connection?.status === 'EXPIRED'
+
+                  // Determine connection type from stored credentials (fetched via API)
+                  const isMetaPlatform = ['facebook', 'instagram'].includes(platform.key)
+                  const isLinkedIn = platform.key === 'linkedin'
+                  const canSwitchPage = isConnected && (isMetaPlatform || isLinkedIn)
 
                   return (
                     <div
@@ -899,30 +927,43 @@ function BrandSettingsContent() {
                         </div>
                       </div>
 
-                      {isConnected ? (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDisconnectPlatform(connection!.id)}
-                          disabled={disconnectingPlatform === connection!.id}
-                          className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/20"
-                        >
-                          {disconnectingPlatform === connection!.id ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <Unplug className="h-4 w-4" />
-                          )}
-                        </Button>
-                      ) : (
-                        <Button
-                          size="sm"
-                          variant={hasError ? 'default' : 'outline'}
-                          onClick={() => handleConnectPlatform(platform.oauthKey)}
-                        >
-                          <ExternalLink className="h-3.5 w-3.5 mr-1.5" />
-                          {hasError ? 'Reconnect' : 'Connect'}
-                        </Button>
-                      )}
+                      <div className="flex items-center gap-1">
+                        {canSwitchPage && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setPageSelectorPlatform(platform.key as 'facebook' | 'instagram' | 'linkedin')}
+                            className="text-xs text-muted-foreground hover:text-foreground"
+                            title="Switch page/account"
+                          >
+                            Switch
+                          </Button>
+                        )}
+                        {isConnected ? (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDisconnectPlatform(connection!.id)}
+                            disabled={disconnectingPlatform === connection!.id}
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/20"
+                          >
+                            {disconnectingPlatform === connection!.id ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Unplug className="h-4 w-4" />
+                            )}
+                          </Button>
+                        ) : (
+                          <Button
+                            size="sm"
+                            variant={hasError ? 'default' : 'outline'}
+                            onClick={() => handleConnectPlatform(platform.oauthKey)}
+                          >
+                            <ExternalLink className="h-3.5 w-3.5 mr-1.5" />
+                            {hasError ? 'Reconnect' : 'Connect'}
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   )
                 })}
@@ -931,11 +972,31 @@ function BrandSettingsContent() {
               <div className="mt-4 p-3 bg-muted/50 rounded-lg">
                 <p className="text-xs text-muted-foreground">
                   Each platform requires OAuth authorization. Click Connect to grant StewardGrowth
-                  access to post on your behalf. You can disconnect at any time.
+                  access to post on your behalf. You can disconnect at any time. For Facebook,
+                  Instagram, and LinkedIn, use the &quot;Switch&quot; button to select a specific
+                  Page or Company to post as.
                 </p>
               </div>
             </CardContent>
           </Card>
+
+          {/* Page/Account Selector Modal */}
+          {pageSelectorPlatform && brand && (
+            <PageSelectorModal
+              platform={pageSelectorPlatform}
+              brandId={brand.id}
+              onSelect={(selected) => {
+                toast({
+                  title: 'Account Updated',
+                  description: `Now posting as: ${selected.name}`,
+                })
+                setPageSelectorPlatform(null)
+                // Refresh connections
+                fetchBrand()
+              }}
+              onClose={() => setPageSelectorPlatform(null)}
+            />
+          )}
         </TabsContent>
 
         {/* Danger Zone */}

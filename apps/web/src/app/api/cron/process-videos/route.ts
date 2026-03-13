@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { createSocialVideo, checkVideoStatus } from '@/lib/video'
 
-// Verify this is a legitimate Vercel Cron request
 function verifyCronRequest(request: NextRequest): boolean {
   const authHeader = request.headers.get('authorization')
   if (process.env.CRON_SECRET) {
@@ -17,18 +16,18 @@ const VIDEO_PLATFORMS = ['tiktok', 'youtube', 'facebook', 'instagram']
  * GET /api/cron/process-videos
  *
  * Runs every 5 minutes (configured in vercel.json)
- * Processes video generation for TikTok, YouTube, Facebook, and Instagram content:
- * 1. Generates images with DALL-E
- * 2. Creates voiceover with ElevenLabs
- * 3. Compiles video with Shotstack
- * 4. Updates content with completed video URLs
+ * Processes ecommerce-style video generation for social content:
+ * 1. Generates product/lifestyle images with DALL-E
+ * 2. Generates ad copy (headlines + subtexts)
+ * 3. Creates voiceover with ElevenLabs
+ * 4. Compiles professional ad video with Shotstack
+ * 5. Updates content with completed video URLs
  */
 export async function GET(request: NextRequest) {
   if (!verifyCronRequest(request)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  // Skip if Shotstack not configured
   if (!process.env.SHOTSTACK_API_KEY) {
     return NextResponse.json({
       message: 'Shotstack not configured, skipping video processing',
@@ -55,10 +54,9 @@ export async function GET(request: NextRequest) {
       include: {
         brand: true,
       },
-      take: 2, // Process max 2 at a time (video generation is expensive)
+      take: 2,
     })
 
-    // Filter to only those without renderId
     const toGenerate = needsGeneration.filter(content => {
       const platformVersions = (content.platformVersions as Record<string, any>) || {}
       const videoPlatform = content.platforms.find(p => VIDEO_PLATFORMS.includes(p))
@@ -67,7 +65,6 @@ export async function GET(request: NextRequest) {
       return platformData?.videoScript && !platformData?.renderId
     })
 
-    // Start video generation for each
     for (const content of toGenerate) {
       const platformVersions = (content.platformVersions as Record<string, any>) || {}
       const videoPlatform = content.platforms.find(p => VIDEO_PLATFORMS.includes(p)) as 'tiktok' | 'youtube' | 'facebook' | 'instagram'
@@ -78,14 +75,21 @@ export async function GET(request: NextRequest) {
       try {
         console.log(`[Video] Starting generation for ${content.id}...`)
 
-        const videoFormat = videoPlatform === 'youtube' ? 'youtube' : 'tiktok' as const
+        // Extract brand styling for professional ad look
+        const brandSettings = (content.brand?.settings as Record<string, any>) || {}
+        const brandColor = (brandSettings.color as string) || '#1a1a2e'
+        const brandLogoUrl = brandSettings.logoUrl || content.brand?.logo || undefined
+
         const { renderId } = await createSocialVideo({
           script: platformData.videoScript,
-          platform: (videoPlatform === 'facebook' || videoPlatform === 'instagram') ? videoPlatform : videoFormat,
+          platform: videoPlatform,
           brandName: content.brand?.name || 'Brand',
+          brandColor,
+          brandLogoUrl,
+          template: platformData.videoTemplate || 'product-showcase',
+          ctaText: platformData.ctaText || 'Learn More',
         })
 
-        // Save renderId to track progress
         await db.contentPost.update({
           where: { id: content.id },
           data: {
@@ -115,7 +119,6 @@ export async function GET(request: NextRequest) {
       },
     })
 
-    // Filter to those with processing status
     const inProgress = allVideoPosts.filter(content => {
       const platformVersions = (content.platformVersions as Record<string, any>) || {}
       const videoPlatform = content.platforms.find(p => VIDEO_PLATFORMS.includes(p))
@@ -135,7 +138,6 @@ export async function GET(request: NextRequest) {
         const status = await checkVideoStatus(platformData.renderId)
 
         if (status.status === 'done') {
-          // Update with video URL
           await db.contentPost.update({
             where: { id: content.id },
             data: {
@@ -154,7 +156,6 @@ export async function GET(request: NextRequest) {
           results.completed++
           console.log(`[Video] Completed: ${content.id} -> ${status.videoUrl}`)
         } else if (status.status === 'failed') {
-          // Mark as failed
           await db.contentPost.update({
             where: { id: content.id },
             data: {
@@ -179,7 +180,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    console.log(`[Cron] Video processing complete:`, results)
+    console.log('[Cron] Video processing complete:', results)
 
     return NextResponse.json({
       success: true,

@@ -1,94 +1,211 @@
 /**
- * Video Generation Library
+ * Video Generation Library — Ecommerce Ad Videos
  *
- * Creates automated slideshow videos using:
- * - OpenAI DALL-E for images
- * - ElevenLabs for voiceover
- * - Shotstack for video compilation
+ * Creates professional ecommerce-style ad videos using:
+ * - OpenAI DALL-E 3 for product/lifestyle imagery
+ * - ElevenLabs for professional voiceover
+ * - Shotstack for video compilation with motion graphics
+ *
+ * Templates: product-showcase, promo-ad, testimonial, brand-story, before-after
  */
 
 export * from './elevenlabs'
 export * from './shotstack'
 
 import { generateSpeechBase64, RECOMMENDED_VOICES } from './elevenlabs'
-import { createSlideshowVideo, getRenderStatus, FREE_MUSIC, type RenderStatus } from './shotstack'
+import {
+  createEcommerceVideo,
+  createSlideshowVideo,
+  getRenderStatus,
+  ECOMMERCE_MUSIC,
+  FREE_MUSIC,
+  type RenderStatus,
+  type VideoTemplate,
+  type BrandStyle,
+} from './shotstack'
 import OpenAI from 'openai'
 
 export interface VideoContentOptions {
   script: string
   platform: 'tiktok' | 'youtube' | 'instagram' | 'facebook'
   brandName: string
+  brandColor?: string           // Primary brand hex color
+  brandSecondaryColor?: string  // Secondary hex color
+  brandAccentColor?: string     // CTA / highlight hex color
+  brandLogoUrl?: string
   brandVoice?: 'professional' | 'friendly' | 'authoritative' | 'youthful'
   gender?: 'male' | 'female'
   voiceId?: string
-  imagePrompts?: string[] // Custom image prompts, or auto-generate from script
-  musicStyle?: 'upbeat' | 'inspirational' | 'corporate' | 'calm'
+  imagePrompts?: string[]
+  musicStyle?: 'energetic' | 'modern' | 'luxury' | 'hype' | 'minimal'
+  template?: VideoTemplate
+  ctaText?: string
+  ctaSubtext?: string
+  productName?: string
+  price?: string
+  tagline?: string
 }
 
-/**
- * Generate images for video using DALL-E
- */
-async function generateVideoImages(
+// --- Image Prompt Generation ---
+
+const TEMPLATE_IMAGE_STYLES: Record<VideoTemplate, string> = {
+  'product-showcase': `Professional ecommerce product photography style:
+    - Clean, minimal backgrounds (white, light gray, or subtle gradient)
+    - Product hero shots with dramatic lighting
+    - Lifestyle shots showing the product in use
+    - Close-up detail shots highlighting premium quality
+    - Studio-quality with soft shadows and reflections`,
+  'promo-ad': `Bold promotional ad style:
+    - Vibrant, eye-catching backgrounds with energy
+    - Product shown prominently with dynamic angles
+    - Sale/discount feel — urgency and excitement
+    - Bright lighting, saturated colors
+    - Flat lay or action shots`,
+  'testimonial': `Lifestyle and people-focused style:
+    - Warm, authentic lifestyle photography
+    - People using or enjoying the product naturally
+    - Soft, natural lighting
+    - Comfortable, relatable settings (home, office, outdoors)
+    - Genuine, candid feel`,
+  'brand-story': `Cinematic brand narrative style:
+    - Wide, dramatic compositions
+    - Rich color grading with depth
+    - Behind-the-scenes or origin story visuals
+    - Atmospheric lighting (golden hour, dramatic shadows)
+    - Storytelling through visual sequences`,
+  'before-after': `Transformation comparison style:
+    - Clear before and after visuals
+    - Consistent framing for comparison
+    - Dramatic improvement shown visually
+    - Clean, well-lit shots
+    - Side-by-side or sequential transformation`,
+}
+
+async function generateEcommerceImages(
   script: string,
   brandName: string,
-  count: number = 4
+  template: VideoTemplate = 'product-showcase',
+  productName?: string,
+  count: number = 4,
 ): Promise<string[]> {
   const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
 
-  // Extract key points from script for image prompts
+  const imageStyle = TEMPLATE_IMAGE_STYLES[template]
+
   const promptResponse = await openai.chat.completions.create({
     model: 'gpt-4o',
     messages: [
       {
         role: 'system',
-        content: 'You create image prompts for DALL-E. Return only a JSON array of strings.',
+        content: `You create image prompts for DALL-E that produce professional ecommerce ad visuals. Return only a JSON object with a "prompts" array of strings.`,
       },
       {
         role: 'user',
-        content: `Create ${count} image prompts for a video about: "${script.substring(0, 500)}"
+        content: `Create ${count} image prompts for a professional ecommerce video ad.
 
 Brand: ${brandName}
-Style: Professional, modern, clean backgrounds suitable for social media
-Each prompt should visualize a different key point from the script.
+${productName ? `Product: ${productName}` : ''}
+Script context: "${script.substring(0, 600)}"
+Template style: ${template}
 
-Return JSON array: ["prompt1", "prompt2", ...]`,
+Image style guidelines:
+${imageStyle}
+
+Requirements:
+- Each image should be a DIFFERENT scene/angle that tells a visual story
+- Image 1: Attention-grabbing hero shot
+- Image 2: Product in context / lifestyle usage
+- Image 3: Detail or feature highlight
+- Image 4: Aspirational / outcome shot
+- All images should look like they belong in a premium ad campaign
+- NO text in images — text will be added as overlays
+- Professional studio or lifestyle photography quality
+- Vertical format (portrait orientation)
+
+Return JSON: {"prompts": ["prompt1", "prompt2", ...]}`,
       },
     ],
     response_format: { type: 'json_object' },
   })
 
-  const prompts = JSON.parse(promptResponse.choices[0].message.content || '{"prompts":[]}')
-  const imagePrompts = prompts.prompts || prompts || []
+  const parsed = JSON.parse(promptResponse.choices[0].message.content || '{"prompts":[]}')
+  const imagePrompts: string[] = parsed.prompts || []
 
-  // Generate images
   const imageUrls: string[] = []
   for (const prompt of imagePrompts.slice(0, count)) {
     try {
       const image = await openai.images.generate({
         model: 'dall-e-3',
-        prompt: `${prompt}. Style: Clean, professional, suitable for ${brandName} social media. Vertical format.`,
+        prompt: `${prompt}. Style: Premium ecommerce product photography for ${brandName}. Professional studio quality. No text or watermarks. Vertical portrait format.`,
         n: 1,
-        size: '1024x1792', // Vertical for social media
-        quality: 'standard',
+        size: '1024x1792',
+        quality: 'hd',
       })
-      if (image.data && image.data[0]?.url) {
+      if (image.data?.[0]?.url) {
         imageUrls.push(image.data[0].url)
       }
     } catch (error) {
-      console.error(`[Video] Failed to generate image:`, error)
+      console.error('[Video] Failed to generate image:', error)
     }
   }
 
   return imageUrls
 }
 
-/**
- * Upload audio to a public URL (using a simple approach with base64 data URL)
- * Note: For production, you'd want to upload to cloud storage
- */
+// --- Ad Copy Generation ---
+
+async function generateAdCopy(
+  script: string,
+  brandName: string,
+  template: VideoTemplate,
+  imageCount: number,
+  productName?: string,
+  price?: string,
+): Promise<{ headlines: string[]; subtexts: string[] }> {
+  const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+
+  const response = await openai.chat.completions.create({
+    model: 'gpt-4o',
+    messages: [
+      {
+        role: 'system',
+        content: 'You write punchy, bold ecommerce ad copy. Return JSON only.',
+      },
+      {
+        role: 'user',
+        content: `Create ${imageCount} headline + subtext pairs for a ${template} ecommerce video ad.
+
+Brand: ${brandName}
+${productName ? `Product: ${productName}` : ''}
+${price ? `Price: ${price}` : ''}
+Script: "${script.substring(0, 500)}"
+
+Rules:
+- Headlines: 2-6 words, BOLD and punchy (e.g., "REDEFINE YOUR STYLE", "BUILT DIFFERENT", "LIMITED DROP")
+- Subtexts: 5-12 words, supporting the headline (e.g., "Premium materials. Unmatched quality.", "Free shipping on orders over $50")
+- Match the ${template} template vibe
+- Slide 1 should hook attention
+- Last slide should drive action
+- Use power words: Transform, Unlock, Discover, Elevate, Premium, Exclusive
+
+Return JSON: {"headlines": ["..."], "subtexts": ["..."]}`,
+      },
+    ],
+    response_format: { type: 'json_object' },
+  })
+
+  const parsed = JSON.parse(response.choices[0].message.content || '{"headlines":[],"subtexts":[]}')
+  return {
+    headlines: parsed.headlines || [],
+    subtexts: parsed.subtexts || [],
+  }
+}
+
+// --- Voiceover ---
+
 async function generateVoiceoverUrl(
   script: string,
-  voiceId?: string
+  voiceId?: string,
 ): Promise<string | undefined> {
   if (!process.env.ELEVENLABS_API_KEY) {
     console.log('[Video] ElevenLabs not configured, skipping voiceover')
@@ -99,11 +216,13 @@ async function generateVoiceoverUrl(
     const audioBase64 = await generateSpeechBase64({
       text: script,
       voiceId,
+      stability: 0.6,
+      similarityBoost: 0.8,
+      style: 0.3,
     })
 
     // For Shotstack, we need a public URL
     // In production, upload to S3/Cloudinary/etc
-    // For now, we'll use a data URL (works for testing)
     return `data:audio/mpeg;base64,${audioBase64}`
   } catch (error) {
     console.error('[Video] Failed to generate voiceover:', error)
@@ -111,14 +230,13 @@ async function generateVoiceoverUrl(
   }
 }
 
+// --- Main Entry Point ---
+
 /**
- * Generate a complete short-form video for social media
+ * Generate a professional ecommerce-style ad video for social media
  *
- * This creates slideshow-style videos with:
- * - AI-generated images (DALL-E)
- * - AI voiceover (ElevenLabs)
- * - Background music
- * - Text overlays
+ * Creates videos with dynamic motion, bold typography, product highlights,
+ * brand colors, and professional CTA screens.
  */
 export async function createSocialVideo(options: VideoContentOptions): Promise<{
   renderId: string
@@ -128,42 +246,80 @@ export async function createSocialVideo(options: VideoContentOptions): Promise<{
     script,
     platform,
     brandName,
+    brandColor = '#1a1a2e',
+    brandSecondaryColor = '#16213e',
+    brandAccentColor = '#e94560',
+    brandLogoUrl,
     brandVoice = 'professional',
     gender = 'female',
     voiceId,
-    musicStyle = 'inspirational',
+    musicStyle = 'energetic',
+    template = 'product-showcase',
+    ctaText = 'Shop Now',
+    ctaSubtext,
+    productName,
+    price,
+    tagline,
   } = options
 
-  console.log(`[Video] Creating ${platform} video for ${brandName}...`)
+  console.log(`[Video] Creating ${template} ${platform} ad for ${brandName}...`)
   console.log(`[Video] Script: ${script.split(/\s+/).length} words`)
 
-  // 1. Generate images from script
-  console.log('[Video] Generating images...')
-  const images = await generateVideoImages(script, brandName, 4)
+  const brand: BrandStyle = {
+    primaryColor: brandColor,
+    secondaryColor: brandSecondaryColor,
+    accentColor: brandAccentColor,
+    fontFamily: 'Montserrat',
+    logoUrl: brandLogoUrl,
+  }
+
+  // 1. Generate ecommerce-style images
+  console.log('[Video] Generating product/lifestyle images...')
+  const images = options.imagePrompts
+    ? await generateCustomImages(options.imagePrompts)
+    : await generateEcommerceImages(script, brandName, template, productName, 4)
 
   if (images.length === 0) {
     throw new Error('Failed to generate any images for video')
   }
   console.log(`[Video] Generated ${images.length} images`)
 
-  // 2. Generate voiceover
+  // 2. Generate ad copy (headlines + subtexts)
+  console.log('[Video] Generating ad copy...')
+  const { headlines, subtexts } = await generateAdCopy(
+    script, brandName, template, images.length, productName, price,
+  )
+
+  // 3. Generate voiceover
   console.log('[Video] Generating voiceover...')
   const selectedVoiceId = voiceId || RECOMMENDED_VOICES[brandVoice]?.[gender]
   const voiceoverUrl = await generateVoiceoverUrl(script, selectedVoiceId)
 
-  // 3. Extract key text overlays from script
-  const sentences = script.split(/[.!?]+/).filter(s => s.trim().length > 10)
-  const textOverlays = sentences.slice(0, images.length).map(s => s.trim().substring(0, 80))
+  // 4. Build price array (only for product-showcase and promo-ad)
+  const prices: string[] = []
+  if (price && (template === 'product-showcase' || template === 'promo-ad')) {
+    // Show price on 2nd or 3rd slide
+    prices[Math.min(2, images.length - 1)] = price
+  }
 
-  // 4. Compile video with Shotstack
-  console.log('[Video] Compiling video...')
-  const { renderId } = await createSlideshowVideo({
+  // 5. Compile video
+  console.log('[Video] Compiling ecommerce video...')
+  const musicMap: Record<string, string> = ECOMMERCE_MUSIC
+  const { renderId } = await createEcommerceVideo({
     images,
-    script,
-    voiceoverUrl,
-    textOverlays,
+    headlines: headlines.slice(0, images.length),
+    subtexts: subtexts.slice(0, images.length),
+    prices,
     platform,
-    musicUrl: FREE_MUSIC[musicStyle],
+    template,
+    brand,
+    voiceoverUrl,
+    musicUrl: musicMap[musicStyle] || ECOMMERCE_MUSIC.energetic,
+    ctaText,
+    ctaSubtext,
+    brandName,
+    brandTagline: tagline,
+    script,
   })
 
   console.log(`[Video] Render started: ${renderId}`)
@@ -172,6 +328,32 @@ export async function createSocialVideo(options: VideoContentOptions): Promise<{
     renderId,
     status: 'queued',
   }
+}
+
+// --- Helpers ---
+
+async function generateCustomImages(prompts: string[]): Promise<string[]> {
+  const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+  const urls: string[] = []
+
+  for (const prompt of prompts) {
+    try {
+      const image = await openai.images.generate({
+        model: 'dall-e-3',
+        prompt: `${prompt}. Professional ecommerce photography. No text or watermarks. Vertical portrait.`,
+        n: 1,
+        size: '1024x1792',
+        quality: 'hd',
+      })
+      if (image.data?.[0]?.url) {
+        urls.push(image.data[0].url)
+      }
+    } catch (error) {
+      console.error('[Video] Failed to generate custom image:', error)
+    }
+  }
+
+  return urls
 }
 
 /**
@@ -183,12 +365,11 @@ export async function checkVideoStatus(renderId: string): Promise<RenderStatus> 
 
 /**
  * Estimate video duration from script word count
- * Average speaking rate is ~150 words per minute
  */
 export function estimateVideoDuration(script: string): number {
   const wordCount = script.split(/\s+/).length
   const minutes = wordCount / 150
-  return Math.ceil(minutes * 60) // Return seconds
+  return Math.ceil(minutes * 60)
 }
 
 /**
@@ -230,9 +411,9 @@ export function validateShortFormScript(script: string): {
     }
   }
 
-  return {
-    valid: true,
-    wordCount,
-    estimatedSeconds,
-  }
+  return { valid: true, wordCount, estimatedSeconds }
 }
+
+// Re-export for backward compatibility
+export { createSlideshowVideo, FREE_MUSIC, ECOMMERCE_MUSIC }
+export type { VideoTemplate, BrandStyle }

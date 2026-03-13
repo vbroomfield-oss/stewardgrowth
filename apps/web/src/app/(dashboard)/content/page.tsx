@@ -27,6 +27,10 @@ import {
   CheckCircle,
   AlertCircle,
   Eye,
+  Video,
+  MessageCircle,
+  Music2,
+  Youtube,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -62,6 +66,10 @@ const platformIcons: Record<string, typeof Twitter> = {
   linkedin: Linkedin,
   facebook: Facebook,
   instagram: Instagram,
+  threads: MessageCircle,
+  tiktok: Video,
+  youtube: Youtube,
+  pinterest: Music2,
   email: Mail,
   blog: FileText,
 }
@@ -109,6 +117,9 @@ export default function ContentPage() {
 
   const filteredContent = content.filter((c) => {
     if (filterBrand !== 'all' && c.brand.id !== filterBrand) return false
+    if (filterStatus === 'SCHEDULED') {
+      return c.status === 'APPROVED' && c.scheduledFor != null
+    }
     if (filterStatus !== 'all' && c.status !== filterStatus) return false
     return true
   })
@@ -245,7 +256,9 @@ export default function ContentPage() {
                 <SelectItem value="DRAFT">Draft</SelectItem>
                 <SelectItem value="AWAITING_APPROVAL">Pending Approval</SelectItem>
                 <SelectItem value="APPROVED">Approved</SelectItem>
+                <SelectItem value="SCHEDULED">Scheduled</SelectItem>
                 <SelectItem value="PUBLISHED">Published</SelectItem>
+                <SelectItem value="FAILED">Failed</SelectItem>
               </SelectContent>
             </Select>
           </div>

@@ -33,14 +33,26 @@ export async function GET(request: NextRequest) {
     }
 
     const client = createFacebookClient()
-    const credentials = await client.handleCallback(code)
+    const result = await client.handleCallback(code)
+
+    // Store credentials (including pages data for selection later)
+    const credentialsToStore: Record<string, any> = {
+      accessToken: result.accessToken,
+      connectionType: result.connectionType || 'personal',
+    }
+
+    if (result.pageAccessToken) {
+      credentialsToStore.pageAccessToken = result.pageAccessToken
+      credentialsToStore.pageId = result.pageId
+      credentialsToStore.pageName = result.pageName
+    }
 
     await db.adPlatformConnection.upsert({
       where: { brandId_platform: { brandId: stateData.brandId, platform: 'FACEBOOK' } },
       update: {
-        credentials: { accessToken: credentials.accessToken },
-        accountId: credentials.accountId,
-        accountName: credentials.accountName,
+        credentials: credentialsToStore,
+        accountId: result.accountId,
+        accountName: result.accountName,
         status: 'CONNECTED',
         lastSyncAt: new Date(),
         lastError: null,
@@ -48,9 +60,9 @@ export async function GET(request: NextRequest) {
       create: {
         brandId: stateData.brandId,
         platform: 'FACEBOOK',
-        credentials: { accessToken: credentials.accessToken },
-        accountId: credentials.accountId,
-        accountName: credentials.accountName,
+        credentials: credentialsToStore,
+        accountId: result.accountId,
+        accountName: result.accountName,
         status: 'CONNECTED',
         lastSyncAt: new Date(),
       },
@@ -63,14 +75,29 @@ export async function GET(request: NextRequest) {
         action: 'platform.connected',
         resource: 'AdPlatformConnection',
         resourceId: stateData.brandId,
-        changes: { platform: 'facebook', accountName: credentials.accountName },
+        changes: {
+          platform: 'facebook',
+          accountName: result.accountName,
+          connectionType: result.connectionType,
+        },
       },
     })
 
     // Look up brand slug for redirect
     const brandForRedirect = await db.saaSBrand.findUnique({ where: { id: stateData.brandId }, select: { slug: true } })
     const redirectSlug = brandForRedirect?.slug || stateData.brandId
-    return NextResponse.redirect(new URL(`/brands/${redirectSlug}/settings?tab=social&success=facebook_connected`, request.url))
+
+    // If multiple pages were returned, redirect to page selector
+    const pages = (result as any).pages
+    if (pages && pages.length > 1) {
+      return NextResponse.redirect(
+        new URL(`/brands/${redirectSlug}/settings?tab=social&selectPage=facebook`, request.url)
+      )
+    }
+
+    return NextResponse.redirect(
+      new URL(`/brands/${redirectSlug}/settings?tab=social&success=facebook_connected`, request.url)
+    )
   } catch (error) {
     console.error('Facebook callback error:', error)
     return NextResponse.redirect(new URL('/settings?error=facebook_callback_failed', request.url))

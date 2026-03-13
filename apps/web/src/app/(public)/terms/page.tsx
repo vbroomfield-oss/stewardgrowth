@@ -1,125 +1,152 @@
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: 'Terms of Service | StewardGrowth',
-  description: 'StewardGrowth Terms of Service',
+  title: 'Terms of Use | StewardGrowth',
+  description: 'StewardGrowth Internal Tool Terms of Use',
 }
 
 export default function TermsPage() {
   return (
     <div className="prose dark:prose-invert max-w-none">
-      <h1>Terms of Service</h1>
+      <h1>Terms of Use</h1>
       <p className="text-muted-foreground">
-        Last updated: February 2026
-      </p>
-      <p className="text-sm bg-yellow-50 dark:bg-yellow-950/30 border border-yellow-200 dark:border-yellow-900 p-4 rounded-lg">
-        [CUSTOMIZE BEFORE LAUNCH] — This document should be reviewed by legal counsel before going live.
+        Last updated: March 2026
       </p>
 
-      <h2>1. Acceptance of Terms</h2>
+      <h2>1. Scope and Applicability</h2>
       <p>
-        By accessing or using StewardGrowth (&quot;the Service&quot;), operated by B.Ent Group (&quot;we,&quot; &quot;us,&quot; or &quot;our&quot;),
-        you agree to be bound by these Terms of Service. If you do not agree to these terms, you may not access or use the Service.
+        StewardGrowth (&quot;the Platform&quot;) is an internal marketing and growth tool developed and operated by
+        B.Ent Group (&quot;the Company,&quot; &quot;we,&quot; &quot;us,&quot; or &quot;our&quot;). Access to the Platform is
+        restricted to authorized team members, contractors, and personnel designated by the Company. By using
+        the Platform, you acknowledge and agree to these Terms of Use.
       </p>
 
-      <h2>2. Description of Service</h2>
+      <h2>2. Description of the Platform</h2>
       <p>
-        StewardGrowth is an AI-powered marketing command center and growth platform designed for SaaS founders
-        and businesses managing multiple brands. The Service provides:
+        StewardGrowth is an AI-powered marketing command center used internally by the Company for managing
+        brand growth across multiple channels. The Platform provides:
       </p>
       <ul>
-        <li>AI-powered content generation across multiple platforms</li>
-        <li>Multi-brand marketing management</li>
+        <li>AI-powered content generation and editing for social media and marketing assets</li>
+        <li>Multi-brand marketing management and campaign orchestration</li>
+        <li>Social media scheduling, publishing, and analytics across connected accounts</li>
+        <li>AI-driven marketing advisor and strategic recommendations</li>
+        <li>Video and audio generation using third-party services</li>
         <li>Analytics, attribution, and KPI tracking</li>
-        <li>Social media scheduling and publishing</li>
-        <li>SEO automation and optimization tools</li>
-        <li>Paid advertising campaign management</li>
         <li>Content approval workflows</li>
       </ul>
 
-      <h2>3. User Accounts and Responsibilities</h2>
+      <h2>3. Authorized Access and User Responsibilities</h2>
       <p>
-        You are responsible for maintaining the confidentiality of your account credentials and for all activities
-        that occur under your account. You agree to:
+        Access to the Platform is granted by the Company on a per-user basis. As an authorized user, you agree to:
       </p>
       <ul>
-        <li>Provide accurate and complete registration information</li>
-        <li>Maintain the security of your password and account</li>
-        <li>Notify us immediately of any unauthorized use of your account</li>
-        <li>Not share your account credentials with unauthorized individuals</li>
-        <li>Comply with all applicable laws and regulations in your use of the Service</li>
+        <li>Use the Platform only for Company-authorized business purposes</li>
+        <li>Maintain the confidentiality of your login credentials and not share them with unauthorized individuals</li>
+        <li>Notify the Company immediately if you suspect unauthorized access to your account</li>
+        <li>Comply with all applicable Company policies, including data handling and social media guidelines</li>
+        <li>Not attempt to bypass access controls or security measures within the Platform</li>
       </ul>
 
-      <h2>4. Subscription and Billing</h2>
+      <h2>4. Data Handling and Confidentiality</h2>
       <p>
-        StewardGrowth offers multiple subscription tiers. By subscribing to a paid plan, you agree to pay the
-        applicable fees. Subscriptions automatically renew unless cancelled before the end of the current billing period.
-        Refunds are handled on a case-by-case basis and are at our sole discretion.
-      </p>
-
-      <h2>5. AI-Generated Content Disclaimer</h2>
-      <p>
-        The Service uses artificial intelligence (including OpenAI and Anthropic technologies) to generate marketing
-        content, recommendations, and insights. You acknowledge that:
+        Data entered into or generated by the Platform -- including brand profiles, marketing strategies, content
+        drafts, analytics data, and social media credentials -- is confidential Company information. You agree to:
       </p>
       <ul>
-        <li>AI-generated content may require review and editing before publication</li>
-        <li>We do not guarantee the accuracy, completeness, or suitability of AI-generated content</li>
-        <li>You are solely responsible for reviewing and approving all content before it is published</li>
-        <li>AI-generated content should not be relied upon as legal, financial, or medical advice</li>
-        <li>You retain full ownership and responsibility for any content published through the Service</li>
+        <li>Treat all data within the Platform as confidential and proprietary to the Company</li>
+        <li>Not export, copy, or share Platform data outside of authorized Company channels</li>
+        <li>Not use data accessed through the Platform for personal gain or purposes unrelated to Company business</li>
+        <li>Follow the Company&apos;s data retention and disposal policies when handling exported data</li>
       </ul>
 
-      <h2>6. Data Privacy and Security</h2>
+      <h2>5. AI Usage Policy</h2>
       <p>
-        Your use of the Service is also governed by our{' '}
-        <a href="/privacy">Privacy Policy</a>. We implement commercially reasonable security measures to protect
-        your data. However, no method of transmission over the Internet is 100% secure.
+        The Platform integrates artificial intelligence services, including OpenAI (GPT-4o, DALL-E), Anthropic
+        (Claude), ElevenLabs (voice synthesis), and Shotstack (video rendering), to generate content,
+        recommendations, and media assets. When using AI features, you acknowledge that:
+      </p>
+      <ul>
+        <li>All AI-generated content must be reviewed by a human before publication or external distribution</li>
+        <li>AI outputs may contain inaccuracies, outdated information, or content that does not align with Company standards</li>
+        <li>You are responsible for verifying the accuracy, tone, and brand compliance of all AI-generated content</li>
+        <li>Sensitive or confidential Company information submitted to AI services may be processed by third-party providers subject to their respective data handling policies</li>
+        <li>AI-generated content should never be relied upon as legal, financial, medical, or professional advice</li>
+        <li>The Company retains ownership of all AI-generated content created through the Platform</li>
+      </ul>
+
+      <h2>6. Social Media Token Storage and Connected Accounts</h2>
+      <p>
+        The Platform stores OAuth access tokens and refresh tokens for social media accounts connected by
+        authorized users. These tokens enable the Platform to publish content and retrieve analytics on behalf
+        of Company-managed social accounts. You agree that:
+      </p>
+      <ul>
+        <li>You will only connect social media accounts that the Company is authorized to manage</li>
+        <li>Connected account credentials are stored in encrypted form and used solely for Platform functionality</li>
+        <li>You will not connect personal social media accounts unless explicitly authorized by the Company</li>
+        <li>You will notify the Company promptly if a connected account is compromised or if access should be revoked</li>
+        <li>The Company may disconnect or revoke token access at any time for security or operational reasons</li>
+      </ul>
+
+      <h2>7. Third-Party API Usage</h2>
+      <p>
+        The Platform interacts with third-party APIs and services to deliver its functionality. These include
+        but are not limited to:
+      </p>
+      <ul>
+        <li><strong>Meta APIs</strong> -- Facebook and Instagram content publishing, analytics, and ad management</li>
+        <li><strong>LinkedIn API</strong> -- Content publishing and engagement tracking</li>
+        <li><strong>OpenAI API</strong> -- Text and image generation</li>
+        <li><strong>Anthropic API</strong> -- AI marketing advisor and content analysis</li>
+        <li><strong>ElevenLabs API</strong> -- Voice synthesis and audio generation</li>
+        <li><strong>Shotstack API</strong> -- Video rendering and media production</li>
+        <li><strong>Telnyx API</strong> -- Telephony and messaging services</li>
+        <li><strong>Google APIs</strong> -- Analytics and YouTube integration</li>
+      </ul>
+      <p>
+        Your use of the Platform is subject to the terms of service of these third-party providers. The Company
+        is not liable for service disruptions, API changes, or policy modifications by third-party providers.
       </p>
 
-      <h2>7. Intellectual Property</h2>
+      <h2>8. Intellectual Property</h2>
       <p>
-        The Service, including its design, features, and underlying technology, is owned by B.Ent Group.
-        Content you create or generate through the Service remains your intellectual property.
-        You grant us a limited license to store, process, and display your content solely for the purpose
-        of providing the Service.
-      </p>
-
-      <h2>8. Third-Party Integrations</h2>
-      <p>
-        The Service integrates with third-party platforms including but not limited to Meta (Facebook, Instagram),
-        Google (Ads, Analytics, YouTube), Twitter/X, LinkedIn, TikTok, Pinterest, Stripe, and others.
-        Your use of these integrations is subject to the respective third party&apos;s terms of service.
-        We are not responsible for the actions, policies, or practices of any third-party services.
+        The Platform, including its source code, design, features, and underlying technology, is the exclusive
+        property of B.Ent Group. Content created or generated through the Platform for Company brands is
+        Company property. You may not copy, modify, distribute, or reverse-engineer any part of the Platform
+        without written authorization from the Company.
       </p>
 
       <h2>9. Limitation of Liability</h2>
       <p>
-        To the maximum extent permitted by law, B.Ent Group shall not be liable for any indirect, incidental,
-        special, consequential, or punitive damages resulting from your use of or inability to use the Service.
-        Our total liability shall not exceed the amount you paid to us in the twelve (12) months preceding
-        the claim.
+        The Platform is provided &quot;as is&quot; for internal use. To the maximum extent permitted by law,
+        B.Ent Group shall not be liable for any indirect, incidental, special, consequential, or punitive
+        damages arising from the use of or inability to use the Platform, including but not limited to damages
+        resulting from AI-generated content, social media posting errors, third-party API failures, or data loss.
       </p>
 
-      <h2>10. Termination</h2>
+      <h2>10. Access Revocation</h2>
       <p>
-        We reserve the right to suspend or terminate your account at our discretion if you violate these terms.
-        You may cancel your account at any time through the Service settings. Upon termination, your right to
-        use the Service ceases immediately. We may retain your data for a reasonable period in accordance with
-        our Privacy Policy.
+        The Company reserves the right to suspend or revoke your access to the Platform at any time, with or
+        without notice, for any reason including but not limited to violation of these Terms, termination of
+        employment or contract, or security concerns. Upon revocation of access, you must immediately cease
+        using the Platform and return or destroy any exported data in your possession.
       </p>
 
       <h2>11. Governing Law</h2>
       <p>
         These Terms shall be governed by and construed in accordance with the laws of the State of Georgia,
-        United States, without regard to its conflict of law provisions. Any disputes shall be resolved in the
-        courts located in the State of Georgia.
+        United States, without regard to its conflict of law provisions.
       </p>
 
       <h2>12. Contact</h2>
       <p>
-        For questions about these Terms of Service, please contact us at:{' '}
+        For questions about these Terms of Use, please contact:{' '}
         <a href="mailto:legal@bentgroup.co">legal@bentgroup.co</a>
+      </p>
+      <p>
+        B.Ent Group<br />
+        Georgia, United States
       </p>
     </div>
   )

@@ -3,15 +3,19 @@ export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
 import { getUserWithOrganization } from '@/lib/auth/get-user-org'
 import { db } from '@/lib/db'
-import { createSocialVideo } from '@/lib/video'
+import { createSocialVideo, type VideoTemplate } from '@/lib/video'
 
 /**
  * POST /api/content/[id]/generate-video
- * Manually trigger video generation for a content post
+ * Generate a professional ecommerce-style ad video for a content post
  *
  * Body:
  * {
- *   "platform": "tiktok" | "youtube" | "instagram"
+ *   "platform": "tiktok" | "youtube" | "instagram" | "facebook",
+ *   "template": "product-showcase" | "promo-ad" | "testimonial" | "brand-story" | "before-after",
+ *   "ctaText": "Shop Now",
+ *   "ctaSubtext": "Use code SAVE20",
+ *   "musicStyle": "energetic" | "modern" | "luxury" | "hype" | "minimal"
  * }
  */
 export async function POST(
@@ -34,23 +38,35 @@ export async function POST(
     }
 
     const body = await request.json()
-    const { platform = 'tiktok' } = body as { platform?: string }
+    const {
+      platform = 'tiktok',
+      template = 'product-showcase',
+      ctaText = 'Shop Now',
+      ctaSubtext,
+      musicStyle = 'energetic',
+    } = body as {
+      platform?: string
+      template?: VideoTemplate
+      ctaText?: string
+      ctaSubtext?: string
+      musicStyle?: string
+    }
 
-    if (!['tiktok', 'youtube', 'instagram'].includes(platform)) {
+    if (!['tiktok', 'youtube', 'instagram', 'facebook'].includes(platform)) {
       return NextResponse.json(
-        { error: 'Platform must be tiktok, youtube, or instagram' },
+        { error: 'Platform must be tiktok, youtube, instagram, or facebook' },
         { status: 400 }
       )
     }
 
-    // Get the content post
+    // Get the content post with brand details
     const contentPost = await db.contentPost.findFirst({
       where: {
         id,
         brand: { organizationId: user.organizationId },
       },
       include: {
-        brand: { select: { name: true, brandVoice: true } },
+        brand: true,
       },
     })
 
@@ -58,7 +74,7 @@ export async function POST(
       return NextResponse.json({ error: 'Content not found' }, { status: 404 })
     }
 
-    // Check for video script in platformVersions
+    // Get video script from platform versions or fall back to content
     const platformVersions = (contentPost.platformVersions as Record<string, Record<string, unknown>>) || {}
     const platformData = platformVersions[platform] || {}
     const videoScript = (platformData.videoScript as string) || contentPost.content
@@ -70,19 +86,26 @@ export async function POST(
       )
     }
 
-    // Determine brand voice style
+    // Extract brand styling
+    const brandSettings = (contentPost.brand.settings as Record<string, unknown>) || {}
     const brandVoice = contentPost.brand.brandVoice as Record<string, unknown> | null
     const voiceStyle = brandVoice?.personality
       ? (Array.isArray(brandVoice.personality) && brandVoice.personality.includes('friendly') ? 'friendly' : 'professional')
       : 'professional'
+    const brandColor = (brandSettings.color as string) || '#1a1a2e'
 
-    // Generate video
+    // Generate video with brand colors and ecommerce template
     const result = await createSocialVideo({
       script: videoScript,
-      platform: platform as 'tiktok' | 'youtube' | 'instagram',
+      platform: platform as 'tiktok' | 'youtube' | 'instagram' | 'facebook',
       brandName: contentPost.brand.name,
+      brandColor,
+      brandLogoUrl: (brandSettings.logoUrl as string) || contentPost.brand.logo || undefined,
       brandVoice: voiceStyle as 'professional' | 'friendly',
-      musicStyle: 'inspirational',
+      musicStyle: musicStyle as 'energetic' | 'modern' | 'luxury' | 'hype' | 'minimal',
+      template,
+      ctaText,
+      ctaSubtext,
     })
 
     // Update content post with render ID and status
@@ -91,7 +114,8 @@ export async function POST(
       [platform]: {
         ...platformData,
         renderId: result.renderId,
-        videoStatus: result.status === 'queued' ? 'processing' : result.status,
+        videoStatus: 'processing',
+        videoTemplate: template,
       },
     }
 
@@ -105,6 +129,7 @@ export async function POST(
       success: true,
       renderId: result.renderId,
       status: result.status,
+      template,
     })
   } catch (error) {
     console.error('Video generation error:', error)

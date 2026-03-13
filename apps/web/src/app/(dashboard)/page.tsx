@@ -102,11 +102,29 @@ export default function DashboardPage() {
         const totalLeads = brands.reduce((sum, b) => sum + b.metrics.leads, 0)
         const totalAdSpend = brands.reduce((sum, b) => sum + b.metrics.adSpend, 0)
 
+        // Fetch real weekly stats
+        let weeklyStats = { contentPublished: 0, seoTasksCompleted: 0, seoTasksTotal: 0, activeCampaigns: 0, callsAttributed: 0 }
+        try {
+          const statsRes = await fetch('/api/analytics/summary?range=7d', { credentials: 'include' })
+          if (statsRes.ok) {
+            const statsData = await statsRes.json()
+            weeklyStats = {
+              contentPublished: statsData.contentPublished || 0,
+              seoTasksCompleted: statsData.seoTasksCompleted || 0,
+              seoTasksTotal: statsData.seoTasksTotal || 0,
+              activeCampaigns: statsData.activeCampaigns || 0,
+              callsAttributed: statsData.callsAttributed || 0,
+            }
+          }
+        } catch {
+          // Non-blocking — use defaults
+        }
+
         setData({
           brands,
           metrics: {
             totalMrr,
-            previousMrr: 0, // We'd need historical data to calculate this
+            previousMrr: 0,
             totalLeads,
             previousLeads: 0,
             conversionRate: totalLeads > 0 ? (brands.reduce((sum, b) => sum + b.metrics.trials, 0) / totalLeads) * 100 : 0,
@@ -114,13 +132,7 @@ export default function DashboardPage() {
             totalAdSpend,
             previousAdSpend: 0,
           },
-          weeklyStats: {
-            contentPublished: 0,
-            seoTasksCompleted: 0,
-            seoTasksTotal: 0,
-            activeCampaigns: 0,
-            callsAttributed: 0,
-          },
+          weeklyStats,
         })
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load dashboard')
