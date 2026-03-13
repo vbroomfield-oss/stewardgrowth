@@ -8,31 +8,31 @@
   "crons": [
     {
       "path": "/api/cron/generate-content?batch=1",
-      "schedule": "0 17 * * 1"
+      "schedule": "0 11 * * 1"
     },
     {
       "path": "/api/cron/generate-content?batch=2",
-      "schedule": "0 17 * * 2"
+      "schedule": "0 11 * * 2"
     },
     {
       "path": "/api/cron/generate-content?batch=3",
-      "schedule": "0 17 * * 3"
+      "schedule": "0 11 * * 3"
     },
     {
       "path": "/api/cron/generate-content?batch=4",
-      "schedule": "0 17 * * 4"
+      "schedule": "0 11 * * 4"
     },
     {
       "path": "/api/cron/generate-content?batch=5",
-      "schedule": "0 17 * * 5"
+      "schedule": "0 11 * * 5"
     },
     {
       "path": "/api/cron/generate-content?batch=6",
-      "schedule": "0 17 * * 6"
+      "schedule": "0 11 * * 6"
     },
     {
       "path": "/api/cron/generate-content?batch=7",
-      "schedule": "0 17 * * 0"
+      "schedule": "0 11 * * 0"
     },
     {
       "path": "/api/cron/publish-content",

@@ -21,6 +21,53 @@ function verifyCronRequest(request: NextRequest): boolean {
 // All supported social platforms including video
 type SocialPlatform = 'twitter' | 'linkedin' | 'facebook' | 'instagram' | 'tiktok' | 'threads' | 'youtube' | 'pinterest'
 
+/**
+ * Create a Date object set to a specific hour in US Eastern Time (Atlanta, GA).
+ * Vercel runs in UTC, so we offset accordingly.
+ * EST = UTC-5, EDT = UTC-4. We use America/New_York to handle DST automatically.
+ */
+function todayAtEstHour(hour: number, minuteOffset = 0): Date {
+  // Build a date string for today in EST
+  const now = new Date()
+  const estString = now.toLocaleString('en-US', { timeZone: 'America/New_York' })
+  const estNow = new Date(estString)
+
+  // Set desired hour in EST
+  estNow.setHours(hour, minuteOffset, 0, 0)
+
+  // Calculate the UTC offset: difference between UTC now and EST now
+  const utcOffset = now.getTime() - estNow.getTime() + (estNow.getTime() - new Date(estNow.toISOString().replace('Z', '')).getTime())
+
+  // Simpler approach: just use the timezone offset directly
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/New_York',
+    year: 'numeric', month: '2-digit', day: '2-digit',
+  })
+  const parts = formatter.formatToParts(now)
+  const year = parseInt(parts.find(p => p.type === 'year')!.value)
+  const month = parseInt(parts.find(p => p.type === 'month')!.value) - 1
+  const day = parseInt(parts.find(p => p.type === 'day')!.value)
+
+  // Determine if EST or EDT by checking offset
+  const jan = new Date(year, 0, 1)
+  const jul = new Date(year, 6, 1)
+  const stdOffset = Math.max(jan.getTimezoneOffset(), jul.getTimezoneOffset())
+  // On Vercel (UTC), getTimezoneOffset() is 0, so we hardcode Eastern offset
+  // EST = UTC-5 (300 min), EDT = UTC-4 (240 min)
+  // Check if current date is in DST range (2nd Sunday March - 1st Sunday November)
+  const marchSecondSunday = new Date(year, 2, 1)
+  marchSecondSunday.setDate(marchSecondSunday.getDate() + (7 - marchSecondSunday.getDay()) % 7 + 7)
+  const novFirstSunday = new Date(year, 10, 1)
+  novFirstSunday.setDate(novFirstSunday.getDate() + (7 - novFirstSunday.getDay()) % 7)
+
+  const isDST = now >= marchSecondSunday && now < novFirstSunday
+  const estOffsetHours = isDST ? 4 : 5
+
+  // Create UTC date for the desired EST hour
+  const result = new Date(Date.UTC(year, month, day, hour + estOffsetHours, minuteOffset, 0, 0))
+  return result
+}
+
 // Split platforms into 7 daily batches (1 platform each) for minimal load per run
 const BATCH_PLATFORMS: Record<string, SocialPlatform[]> = {
   '1': ['twitter'],       // Monday - also includes blogs + email
@@ -49,7 +96,7 @@ function generateBookTopics(book: { title: string; description: string | null; c
 /**
  * GET /api/cron/generate-content
  *
- * Runs daily at 12 PM EST / 5 PM UTC
+ * Runs daily at 6 AM EST / 11 AM UTC
  * ?batch=1 (Monday): twitter + blogs + email
  * ?batch=2 (Tuesday): linkedin
  * ?batch=3 (Wednesday): facebook (image + video)
@@ -141,11 +188,9 @@ export async function GET(request: NextRequest) {
           for (const platform of platforms) {
             for (let day = 0; day < daysToGenerate; day++) {
               try {
-                const scheduledDate = new Date()
-                scheduledDate.setDate(scheduledDate.getDate() + day + 1)
-                // Stagger times for different books
+                // Schedule for today, staggered by book index (9 AM, 11 AM, 1 PM EST)
                 const hourOffset = brand.books.indexOf(book) * 2
-                scheduledDate.setHours(9 + hourOffset, 0, 0, 0)
+                const scheduledDate = todayAtEstHour(9 + hourOffset + (day * 3))
 
                 const topic = bookTopics[day % bookTopics.length]
                 const result = await generateSocialPost(platform, topic, {
@@ -269,9 +314,10 @@ export async function GET(request: NextRequest) {
                 secondaryKeywords: [book.author, book.category || 'book'].filter(Boolean) as string[],
               })
 
-              const scheduledDate = new Date()
-              scheduledDate.setDate(scheduledDate.getDate() + (i === 0 ? 2 : 5))
-              scheduledDate.setHours(10 + brand.books.indexOf(book), 0, 0, 0)
+              // Blog posts: schedule 2 and 5 days out at 10 AM EST
+              const blogDate = todayAtEstHour(10 + brand.books.indexOf(book))
+              blogDate.setDate(blogDate.getDate() + (i === 0 ? 2 : 5))
+              const scheduledDate = blogDate
 
               const blogPost = await db.contentPost.create({
                 data: {
@@ -347,9 +393,10 @@ export async function GET(request: NextRequest) {
               callToAction: book.amazonUrl ? `Get your copy now` : 'Learn more',
             })
 
-            const scheduledDate = new Date()
-            scheduledDate.setDate(scheduledDate.getDate() + 4)
-            scheduledDate.setHours(8 + brand.books.indexOf(book), 0, 0, 0)
+            // Email: schedule 4 days out at 8 AM EST
+            const emailDate = todayAtEstHour(8 + brand.books.indexOf(book))
+            emailDate.setDate(emailDate.getDate() + 4)
+            const scheduledDate = emailDate
 
             const emailPost = await db.contentPost.create({
               data: {
@@ -439,9 +486,8 @@ export async function GET(request: NextRequest) {
           for (let day = 0; day < daysToGenerate; day++) {
             try {
               console.log(`[Cron] Generating ${platform} day ${day + 1}...`)
-              const scheduledDate = new Date()
-              scheduledDate.setDate(scheduledDate.getDate() + day + 1)
-              scheduledDate.setHours(9, 0, 0, 0)
+              // Schedule for today at 9 AM EST
+              const scheduledDate = todayAtEstHour(9 + (day * 3))
 
               const topic = topics[day % topics.length]
               const result = await generateSocialPost(platform, topic, {
@@ -557,9 +603,10 @@ export async function GET(request: NextRequest) {
               secondaryKeywords: [brand.name.toLowerCase(), industry],
             })
 
-            const scheduledDate = new Date()
-            scheduledDate.setDate(scheduledDate.getDate() + (i === 0 ? 2 : 5))
-            scheduledDate.setHours(10, 0, 0, 0)
+            // Blog posts: schedule 2 and 5 days out at 10 AM EST
+            const brandBlogDate = todayAtEstHour(10)
+            brandBlogDate.setDate(brandBlogDate.getDate() + (i === 0 ? 2 : 5))
+            const scheduledDate = brandBlogDate
 
             const brandBlogPost = await db.contentPost.create({
               data: {
@@ -629,9 +676,10 @@ export async function GET(request: NextRequest) {
             brandVoice: baseBrandVoice,
           })
 
-          const scheduledDate = new Date()
-          scheduledDate.setDate(scheduledDate.getDate() + 4)
-          scheduledDate.setHours(8, 0, 0, 0)
+          // Email: schedule 4 days out at 8 AM EST
+          const brandEmailDate = todayAtEstHour(8)
+          brandEmailDate.setDate(brandEmailDate.getDate() + 4)
+          const scheduledDate = brandEmailDate
 
           const brandEmailPost = await db.contentPost.create({
             data: {
