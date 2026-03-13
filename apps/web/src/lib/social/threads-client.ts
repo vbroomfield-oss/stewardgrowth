@@ -4,8 +4,8 @@ const META_AUTH_URL = 'https://www.facebook.com/v18.0/dialog/oauth'
 const META_TOKEN_URL = 'https://graph.facebook.com/v18.0/oauth/access_token'
 const THREADS_API_URL = 'https://graph.threads.net/v1.0'
 
-// Scopes for Threads publishing
-const SCOPES = ['threads_basic', 'threads_content_publish']
+// Scopes for Threads - basic scopes work in dev mode, threads scopes need App Review
+const SCOPES = ['public_profile', 'email']
 
 export class ThreadsClient implements SocialClient {
   platform = 'threads' as const
@@ -64,18 +64,36 @@ export class ThreadsClient implements SocialClient {
 
     const tokenData = await tokenResponse.json()
 
-    // Get Threads profile
-    const profileResponse = await fetch(
-      `${THREADS_API_URL}/me?fields=id,username,name&access_token=${tokenData.access_token}`
-    )
-
+    // Try Threads profile first, fall back to Facebook profile
     let accountName = 'Threads User'
     let accountId = ''
 
-    if (profileResponse.ok) {
-      const profile = await profileResponse.json()
-      accountName = profile.username || profile.name || 'Threads User'
-      accountId = profile.id
+    try {
+      const profileResponse = await fetch(
+        `${THREADS_API_URL}/me?fields=id,username,name&access_token=${tokenData.access_token}`
+      )
+      if (profileResponse.ok) {
+        const profile = await profileResponse.json()
+        accountName = profile.username || profile.name || 'Threads User'
+        accountId = profile.id
+      }
+    } catch {
+      // Threads API not available - try Facebook profile
+    }
+
+    if (!accountId) {
+      try {
+        const fbProfile = await fetch(
+          `https://graph.facebook.com/v18.0/me?fields=id,name&access_token=${tokenData.access_token}`
+        )
+        if (fbProfile.ok) {
+          const profile = await fbProfile.json()
+          accountName = profile.name || 'Threads User'
+          accountId = profile.id
+        }
+      } catch {
+        accountId = 'unknown'
+      }
     }
 
     this.credentials = {
