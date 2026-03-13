@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { Sidebar } from '@/components/layout/sidebar'
 import { Header } from '@/components/layout/header'
 import { cn } from '@/lib/utils'
@@ -11,6 +12,8 @@ interface User {
   lastName: string
 }
 
+const PORTAL_ROLES = ['VIEWER', 'ANALYST']
+
 export default function DashboardLayout({
   children,
 }: {
@@ -18,6 +21,7 @@ export default function DashboardLayout({
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [user, setUser] = useState<User | null>(null)
+  const router = useRouter()
 
   useEffect(() => {
     async function fetchUser() {
@@ -26,6 +30,11 @@ export default function DashboardLayout({
         if (res.ok) {
           const data = await res.json()
           if (data.user) {
+            // Redirect portal-only users to the customer portal
+            if (PORTAL_ROLES.includes(data.user.role)) {
+              router.replace('/portal')
+              return
+            }
             setUser({
               email: data.user.email,
               firstName: data.user.firstName,
@@ -38,7 +47,7 @@ export default function DashboardLayout({
       }
     }
     fetchUser()
-  }, [])
+  }, [router])
 
   return (
     <div className="min-h-screen bg-background">

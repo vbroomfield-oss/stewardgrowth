@@ -44,6 +44,7 @@ export class ThreadsClient implements SocialClient {
       state,
       scope: scopes.join(','),
       response_type: 'code',
+      auth_type: 'reauthenticate',
     })
     return `${META_AUTH_URL}?${params.toString()}`
   }

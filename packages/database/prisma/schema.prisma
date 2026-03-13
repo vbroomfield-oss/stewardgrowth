@@ -174,9 +174,34 @@ model SaaSBrand {
   marketingPlans       MarketingPlan[]
   approvalRequests     ApprovalRequest[]
   books                Book[]
+  portalTokens         PortalToken[]
 
   @@unique([organizationId, slug])
   @@index([organizationId])
+}
+
+// ===========================================
+// PORTAL ACCESS TOKENS
+// ===========================================
+
+model PortalToken {
+  id        String    @id @default(cuid())
+  createdAt DateTime  @default(now())
+  expiresAt DateTime?
+
+  token     String    @unique @default(cuid())
+
+  brandId   String
+  brand     SaaSBrand @relation(fields: [brandId], references: [id], onDelete: Cascade)
+
+  createdById String
+  label       String?
+
+  isActive   Boolean   @default(true)
+  lastUsedAt DateTime?
+
+  @@index([token])
+  @@index([brandId])
 }
 
 // ===========================================

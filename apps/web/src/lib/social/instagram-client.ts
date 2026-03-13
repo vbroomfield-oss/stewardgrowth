@@ -28,6 +28,7 @@ export class InstagramClient implements SocialClient {
       state,
       scope: getInstagramScopes().join(','),
       response_type: 'code',
+      auth_type: 'reauthenticate',
     })
 
     return `${META_AUTH_URL}?${params.toString()}`

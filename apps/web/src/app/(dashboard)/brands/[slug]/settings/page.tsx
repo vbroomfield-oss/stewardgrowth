@@ -875,9 +875,8 @@ function BrandSettingsContent() {
                   Connect each brand to its own social accounts
                 </p>
                 <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">
-                  When connecting, log into the brand&apos;s dedicated account (e.g., the {brand.name} Facebook Page admin,
-                  the @{brand.slug} Twitter account) — not your personal profile. This ensures all marketing posts
-                  go out from the brand&apos;s perspective.
+                  When you click Connect, you&apos;ll be asked to log in. <strong>Use {brand.name}&apos;s social media login</strong> — not your personal account.
+                  For Facebook/Instagram, log into the account that manages {brand.name}&apos;s Page. This ensures all posts go out from the brand&apos;s perspective.
                 </p>
               </div>
 

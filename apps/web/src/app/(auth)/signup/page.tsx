@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -14,6 +14,9 @@ import { Loader2, Mail, Check } from 'lucide-react'
 
 export default function SignupPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const inviteOrgId = searchParams.get('invite')
+  const inviteRole = searchParams.get('role') || 'VIEWER'
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
   const [email, setEmail] = useState('')
@@ -34,6 +37,8 @@ export default function SignupPage() {
           data: {
             first_name: firstName,
             last_name: lastName,
+            invite_org_id: inviteOrgId || undefined,
+            invite_role: inviteOrgId ? inviteRole : undefined,
           },
           emailRedirectTo: `${window.location.origin}/auth/callback`,
         },
@@ -97,9 +102,14 @@ export default function SignupPage() {
   return (
     <Card className="border-0 shadow-none lg:border lg:shadow-sm">
       <CardHeader className="space-y-1">
-        <CardTitle className="text-2xl font-bold">Create an account</CardTitle>
+        <CardTitle className="text-2xl font-bold">
+          {inviteOrgId ? 'Join your brand portal' : 'Create an account'}
+        </CardTitle>
         <CardDescription>
-          Get started with StewardGrowth for free
+          {inviteOrgId
+            ? 'You\'ve been invited to monitor your brand performance on StewardGrowth.'
+            : 'Get started with StewardGrowth for free'
+          }
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">

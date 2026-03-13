@@ -28,6 +28,7 @@ export class FacebookClient implements SocialClient {
       state,
       scope: getFacebookScopes().join(','),
       response_type: 'code',
+      auth_type: 'reauthenticate',
     })
 
     return `${META_AUTH_URL}?${params.toString()}`

@@ -56,38 +56,72 @@ export async function getUserWithOrganization(): Promise<UserWithOrg | null> {
     const firstName = supabaseUser.user_metadata?.first_name || supabaseUser.user_metadata?.name?.split(' ')[0] || 'User'
     const lastName = supabaseUser.user_metadata?.last_name || supabaseUser.user_metadata?.name?.split(' ').slice(1).join(' ') || ''
 
-    // Create organization slug from email domain or name
-    const orgSlug = email.split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, '-') + '-org'
-    const orgName = `${firstName}'s Organization`
+    // Check if user was invited to an existing organization
+    const inviteOrgId = supabaseUser.user_metadata?.invite_org_id
+    const inviteRole = supabaseUser.user_metadata?.invite_role || 'VIEWER'
 
-    // Create user with default organization in a transaction
-    user = await db.user.create({
-      data: {
-        supabaseId: supabaseUser.id,
-        email,
-        firstName,
-        lastName,
-        avatar: supabaseUser.user_metadata?.avatar_url,
-        organizations: {
-          create: {
-            isDefault: true,
-            role: 'OWNER',
-            organization: {
+    if (inviteOrgId) {
+      // User was invited — join existing org with specified role
+      const invitedOrg = await db.organization.findUnique({ where: { id: inviteOrgId } })
+      if (invitedOrg) {
+        user = await db.user.create({
+          data: {
+            supabaseId: supabaseUser.id,
+            email,
+            firstName,
+            lastName,
+            avatar: supabaseUser.user_metadata?.avatar_url,
+            organizations: {
               create: {
-                name: orgName,
-                slug: orgSlug,
+                isDefault: true,
+                role: inviteRole as any,
+                organizationId: invitedOrg.id,
+              },
+            },
+          },
+          include: {
+            organizations: {
+              where: { isDefault: true },
+              include: { organization: true },
+            },
+          },
+        })
+      }
+    }
+
+    // If not invited or invite org not found, create new org
+    if (!user) {
+      const orgSlug = email.split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, '-') + '-org'
+      const orgName = `${firstName}'s Organization`
+
+      user = await db.user.create({
+        data: {
+          supabaseId: supabaseUser.id,
+          email,
+          firstName,
+          lastName,
+          avatar: supabaseUser.user_metadata?.avatar_url,
+          organizations: {
+            create: {
+              isDefault: true,
+              role: 'OWNER',
+              organization: {
+                create: {
+                  name: orgName,
+                  slug: orgSlug,
+                },
               },
             },
           },
         },
-      },
-      include: {
-        organizations: {
-          where: { isDefault: true },
-          include: { organization: true },
+        include: {
+          organizations: {
+            where: { isDefault: true },
+            include: { organization: true },
+          },
         },
-      },
-    })
+      })
+    }
   }
 
   const defaultOrg = user.organizations[0]
@@ -131,4 +165,11 @@ export async function getUserWithOrganization(): Promise<UserWithOrg | null> {
     organizationName: defaultOrg.organization.name,
     role: defaultOrg.role,
   }
+}
+
+/**
+ * Check if a user role should see the portal instead of the admin dashboard
+ */
+export function isPortalUser(role: string): boolean {
+  return role === 'VIEWER' || role === 'ANALYST'
 }

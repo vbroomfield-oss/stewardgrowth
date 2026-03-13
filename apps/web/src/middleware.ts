@@ -11,6 +11,7 @@ const PUBLIC_ROUTES = [
   '/terms',
   '/privacy',
   '/pricing',
+  '/view',
 ]
 
 // Routes that should redirect to dashboard if already authenticated
