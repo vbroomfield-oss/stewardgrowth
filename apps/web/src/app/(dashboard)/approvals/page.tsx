@@ -83,6 +83,7 @@ export default function ApprovalsPage() {
   const [regeneratingAll, setRegeneratingAll] = useState(false)
   const [regenerateProgress, setRegenerateProgress] = useState({ current: 0, total: 0 })
   const [filterBrand, setFilterBrand] = useState<string>('all')
+  const [playingVideoId, setPlayingVideoId] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -271,17 +272,39 @@ export default function ApprovalsPage() {
 
   // Check if content is for a video platform
   const isVideoContent = (approval: Approval) => {
-    const videoPlatforms = ['tiktok', 'youtube']
+    const videoPlatforms = ['tiktok', 'youtube', 'facebook', 'instagram']
     const platforms = approval.proposedChanges?.platforms || []
     return platforms.some((p: string) => videoPlatforms.includes(p))
   }
 
-  // Get video script from approval
+  // Get video data from approval (check all video-capable platforms)
   const getVideoScript = (approval: Approval) => {
     const platformVersions = approval.proposedChanges?.platformVersions || {}
-    const videoPlatform = Object.keys(platformVersions).find(p => ['tiktok', 'youtube'].includes(p))
+    const videoPlatform = Object.keys(platformVersions).find(p =>
+      ['tiktok', 'youtube', 'facebook', 'instagram'].includes(p) && platformVersions[p]?.isVideo
+    )
     if (videoPlatform) {
       return platformVersions[videoPlatform]
+    }
+    return null
+  }
+
+  // Get video URL from any platform version
+  const getVideoUrl = (approval: Approval): string | null => {
+    const platformVersions = approval.proposedChanges?.platformVersions || {}
+    for (const key of Object.keys(platformVersions)) {
+      const pv = platformVersions[key]
+      if (pv?.videoUrl) return pv.videoUrl
+    }
+    return null
+  }
+
+  // Get video status
+  const getVideoStatus = (approval: Approval): string | null => {
+    const platformVersions = approval.proposedChanges?.platformVersions || {}
+    for (const key of Object.keys(platformVersions)) {
+      const pv = platformVersions[key]
+      if (pv?.videoStatus) return pv.videoStatus
     }
     return null
   }
@@ -681,144 +704,202 @@ export default function ApprovalsPage() {
                                     </div>
                                   )}
 
-                                  {/* Video content - expandable */}
-                                  {isVideo && videoData && (
-                                    <div className="mt-3 space-y-3">
-                                      {/* Caption preview */}
-                                      <div className="p-3 bg-muted/50 rounded text-sm">
-                                        <p className="font-medium text-xs text-muted-foreground mb-1">Caption:</p>
-                                        {videoData.content?.substring(0, 150)}...
-                                      </div>
+                                  {/* Video content — player + script + upload */}
+                                  {isVideo && videoData && (() => {
+                                    const videoUrl = getVideoUrl(approval)
+                                    const videoStatus = getVideoStatus(approval)
+                                    const isPlaying = playingVideoId === approval.id
 
-                                      {/* Expand/Collapse for video script */}
-                                      <Button
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={() => setExpandedId(isExpanded ? null : approval.id)}
-                                        className="w-full"
-                                      >
-                                        {isExpanded ? 'Hide HeyGen Script' : 'Show HeyGen Script'}
-                                      </Button>
-
-                                      {isExpanded && (
-                                        <div className="space-y-3 p-4 bg-purple-500/5 border border-purple-500/20 rounded-lg">
-                                          {/* Hook */}
-                                          {videoData.hook && (
-                                            <div>
-                                              <div className="flex items-center justify-between">
-                                                <p className="font-medium text-xs text-purple-600">HOOK (First 3 sec):</p>
-                                                <Button
-                                                  variant="ghost"
-                                                  size="sm"
-                                                  onClick={() => copyToClipboard(videoData.hook, `hook-${approval.id}`)}
-                                                  className="h-6 px-2"
-                                                >
-                                                  {copiedId === `hook-${approval.id}` ? (
-                                                    <Check className="h-3 w-3 text-green-500" />
-                                                  ) : (
-                                                    <Copy className="h-3 w-3" />
-                                                  )}
-                                                </Button>
-                                              </div>
-                                              <p className="text-sm mt-1 italic">"{videoData.hook}"</p>
-                                            </div>
-                                          )}
-
-                                          {/* Full Script */}
-                                          {videoData.videoScript && (
-                                            <div>
-                                              <div className="flex items-center justify-between">
-                                                <p className="font-medium text-xs text-purple-600">
-                                                  FULL SCRIPT ({videoData.estimatedDuration || '30-60 sec'}):
-                                                </p>
-                                                <Button
-                                                  variant="outline"
-                                                  size="sm"
-                                                  onClick={() => copyToClipboard(videoData.videoScript, `script-${approval.id}`)}
-                                                  className="h-7"
-                                                >
-                                                  {copiedId === `script-${approval.id}` ? (
-                                                    <>
-                                                      <Check className="h-3 w-3 mr-1 text-green-500" />
-                                                      Copied!
-                                                    </>
-                                                  ) : (
-                                                    <>
-                                                      <Copy className="h-3 w-3 mr-1" />
-                                                      Copy for HeyGen
-                                                    </>
-                                                  )}
-                                                </Button>
-                                              </div>
-                                              <div className="mt-2 p-3 bg-white dark:bg-gray-900 rounded text-sm whitespace-pre-wrap font-mono">
-                                                {videoData.videoScript}
-                                              </div>
-                                            </div>
-                                          )}
-
-                                          {/* Suggestions */}
-                                          <div className="grid grid-cols-2 gap-2 text-xs">
-                                            {videoData.suggestedBackground && (
-                                              <div className="p-2 bg-muted rounded">
-                                                <span className="font-medium">Background:</span> {videoData.suggestedBackground}
-                                              </div>
-                                            )}
-                                            {videoData.suggestedAvatar && (
-                                              <div className="p-2 bg-muted rounded">
-                                                <span className="font-medium">Avatar:</span> {videoData.suggestedAvatar}
-                                              </div>
-                                            )}
-                                          </div>
-
-                                          {/* Video Upload */}
-                                          <div className="pt-3 border-t">
-                                            <p className="text-xs text-muted-foreground mb-2">
-                                              After creating the video in HeyGen, upload it here:
-                                            </p>
-                                            <input
-                                              type="file"
-                                              accept="video/mp4,video/quicktime,video/webm"
-                                              onChange={(e) => {
-                                                const file = e.target.files?.[0]
-                                                if (file) {
-                                                  const platform = approval.proposedChanges?.platforms?.find(
-                                                    (p: string) => ['tiktok', 'youtube'].includes(p)
-                                                  ) || 'tiktok'
-                                                  handleVideoUpload(approval.resourceId, platform, file)
-                                                }
-                                              }}
-                                              className="hidden"
-                                              id={`video-upload-${approval.id}`}
-                                            />
-                                            <Button
-                                              variant="outline"
-                                              size="sm"
-                                              onClick={() => document.getElementById(`video-upload-${approval.id}`)?.click()}
-                                              disabled={uploadingId === approval.resourceId}
-                                              className="w-full"
+                                    return (
+                                      <div className="mt-3 space-y-3">
+                                        {/* Video Player */}
+                                        {videoUrl && (
+                                          <div className="rounded-lg overflow-hidden border bg-black">
+                                            <video
+                                              controls
+                                              preload="metadata"
+                                              className="w-full max-h-[480px]"
+                                              poster={videoData.thumbnailUrl}
+                                              onPlay={() => setPlayingVideoId(approval.id)}
+                                              onPause={() => setPlayingVideoId(null)}
+                                              onEnded={() => setPlayingVideoId(null)}
                                             >
-                                              {uploadingId === approval.resourceId ? (
-                                                <>
-                                                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                                  Uploading...
-                                                </>
-                                              ) : (
-                                                <>
-                                                  <Upload className="h-4 w-4 mr-2" />
-                                                  Upload Video from HeyGen
-                                                </>
-                                              )}
-                                            </Button>
-                                            {videoData.videoUrl && (
-                                              <p className="text-xs text-green-600 mt-2">
-                                                ✓ Video uploaded: {videoData.videoUrl.substring(0, 50)}...
-                                              </p>
+                                              <source src={videoUrl} type="video/mp4" />
+                                              Your browser does not support the video tag.
+                                            </video>
+                                            <div className="flex items-center justify-between px-3 py-2 bg-muted/80 text-xs">
+                                              <span className="text-green-600 font-medium flex items-center gap-1">
+                                                <CheckCircle className="h-3 w-3" /> Video Ready
+                                              </span>
+                                              <a
+                                                href={videoUrl}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="text-primary hover:underline"
+                                              >
+                                                Open in new tab
+                                              </a>
+                                            </div>
+                                          </div>
+                                        )}
+
+                                        {/* Video Status (processing/failed) */}
+                                        {!videoUrl && videoStatus && (
+                                          <div className={cn(
+                                            "p-4 rounded-lg border text-center",
+                                            videoStatus === 'processing' && "bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200",
+                                            videoStatus === 'failed' && "bg-red-50 dark:bg-red-900/20 border-red-200",
+                                            videoStatus === 'needs_creation' && "bg-blue-50 dark:bg-blue-900/20 border-blue-200",
+                                          )}>
+                                            {videoStatus === 'processing' && (
+                                              <div className="flex items-center justify-center gap-2 text-yellow-700 dark:text-yellow-300">
+                                                <Loader2 className="h-5 w-5 animate-spin" />
+                                                <span className="font-medium">Video is being generated...</span>
+                                              </div>
+                                            )}
+                                            {videoStatus === 'failed' && (
+                                              <div className="text-red-700 dark:text-red-300">
+                                                <XCircle className="h-5 w-5 mx-auto mb-1" />
+                                                <span className="font-medium">Video generation failed</span>
+                                                {videoData.videoError && (
+                                                  <p className="text-xs mt-1 opacity-75">{videoData.videoError}</p>
+                                                )}
+                                              </div>
+                                            )}
+                                            {videoStatus === 'needs_creation' && (
+                                              <div className="text-blue-700 dark:text-blue-300">
+                                                <Video className="h-5 w-5 mx-auto mb-1" />
+                                                <span className="font-medium">Video pending creation</span>
+                                                <p className="text-xs mt-1 opacity-75">Will be generated by the video processing cron</p>
+                                              </div>
                                             )}
                                           </div>
+                                        )}
+
+                                        {/* Caption preview */}
+                                        <div className="p-3 bg-muted/50 rounded text-sm">
+                                          <p className="font-medium text-xs text-muted-foreground mb-1">Caption:</p>
+                                          {videoData.content?.substring(0, 200)}
+                                          {(videoData.content?.length || 0) > 200 && '...'}
                                         </div>
-                                      )}
-                                    </div>
-                                  )}
+
+                                        {/* Expand/Collapse for video script */}
+                                        <Button
+                                          variant="outline"
+                                          size="sm"
+                                          onClick={() => setExpandedId(isExpanded ? null : approval.id)}
+                                          className="w-full"
+                                        >
+                                          {isExpanded ? (
+                                            <><ChevronUp className="h-4 w-4 mr-2" />Hide Script & Details</>
+                                          ) : (
+                                            <><ChevronDown className="h-4 w-4 mr-2" />Show Script & Details</>
+                                          )}
+                                        </Button>
+
+                                        {isExpanded && (
+                                          <div className="space-y-3 p-4 bg-purple-500/5 border border-purple-500/20 rounded-lg">
+                                            {/* Hook */}
+                                            {videoData.hook && (
+                                              <div>
+                                                <div className="flex items-center justify-between">
+                                                  <p className="font-medium text-xs text-purple-600">HOOK (First 3 sec):</p>
+                                                  <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() => copyToClipboard(videoData.hook, `hook-${approval.id}`)}
+                                                    className="h-6 px-2"
+                                                  >
+                                                    {copiedId === `hook-${approval.id}` ? (
+                                                      <Check className="h-3 w-3 text-green-500" />
+                                                    ) : (
+                                                      <Copy className="h-3 w-3" />
+                                                    )}
+                                                  </Button>
+                                                </div>
+                                                <p className="text-sm mt-1 italic">&ldquo;{videoData.hook}&rdquo;</p>
+                                              </div>
+                                            )}
+
+                                            {/* Full Script */}
+                                            {videoData.videoScript && (
+                                              <div>
+                                                <div className="flex items-center justify-between">
+                                                  <p className="font-medium text-xs text-purple-600">
+                                                    FULL SCRIPT ({videoData.estimatedDuration || '30-60 sec'}):
+                                                  </p>
+                                                  <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={() => copyToClipboard(videoData.videoScript, `script-${approval.id}`)}
+                                                    className="h-7"
+                                                  >
+                                                    {copiedId === `script-${approval.id}` ? (
+                                                      <><Check className="h-3 w-3 mr-1 text-green-500" />Copied!</>
+                                                    ) : (
+                                                      <><Copy className="h-3 w-3 mr-1" />Copy Script</>
+                                                    )}
+                                                  </Button>
+                                                </div>
+                                                <div className="mt-2 p-3 bg-white dark:bg-gray-900 rounded text-sm whitespace-pre-wrap font-mono">
+                                                  {videoData.videoScript}
+                                                </div>
+                                              </div>
+                                            )}
+
+                                            {/* Suggestions */}
+                                            <div className="grid grid-cols-2 gap-2 text-xs">
+                                              {videoData.suggestedBackground && (
+                                                <div className="p-2 bg-muted rounded">
+                                                  <span className="font-medium">Background:</span> {videoData.suggestedBackground}
+                                                </div>
+                                              )}
+                                              {videoData.suggestedAvatar && (
+                                                <div className="p-2 bg-muted rounded">
+                                                  <span className="font-medium">Avatar:</span> {videoData.suggestedAvatar}
+                                                </div>
+                                              )}
+                                            </div>
+
+                                            {/* Video Upload */}
+                                            <div className="pt-3 border-t">
+                                              <p className="text-xs text-muted-foreground mb-2">
+                                                Upload a custom video (replaces auto-generated):
+                                              </p>
+                                              <input
+                                                type="file"
+                                                accept="video/mp4,video/quicktime,video/webm"
+                                                onChange={(e) => {
+                                                  const file = e.target.files?.[0]
+                                                  if (file) {
+                                                    const platform = approval.proposedChanges?.platforms?.find(
+                                                      (p: string) => ['tiktok', 'youtube', 'facebook', 'instagram'].includes(p)
+                                                    ) || 'tiktok'
+                                                    handleVideoUpload(approval.resourceId, platform, file)
+                                                  }
+                                                }}
+                                                className="hidden"
+                                                id={`video-upload-${approval.id}`}
+                                              />
+                                              <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() => document.getElementById(`video-upload-${approval.id}`)?.click()}
+                                                disabled={uploadingId === approval.resourceId}
+                                                className="w-full"
+                                              >
+                                                {uploadingId === approval.resourceId ? (
+                                                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Uploading...</>
+                                                ) : (
+                                                  <><Upload className="h-4 w-4 mr-2" />Upload Custom Video</>
+                                                )}
+                                              </Button>
+                                            </div>
+                                          </div>
+                                        )}
+                                      </div>
+                                    )
+                                  })()}
                                 </div>
                               </div>
                               <div className="flex items-center gap-2 ml-4">
