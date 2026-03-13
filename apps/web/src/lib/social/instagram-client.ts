@@ -66,48 +66,50 @@ export class InstagramClient implements SocialClient {
 
     const tokenData = await tokenResponse.json()
 
-    // Get user's pages and their Instagram accounts
-    const pagesResponse = await fetch(
-      `${GRAPH_API_URL}/me/accounts?fields=instagram_business_account,name,access_token&access_token=${tokenData.access_token}`
+    // Get user profile first
+    const profileResponse = await fetch(
+      `${GRAPH_API_URL}/me?fields=id,name&access_token=${tokenData.access_token}`
     )
+    const profile = profileResponse.ok ? await profileResponse.json() : { id: 'unknown', name: 'Instagram User' }
 
-    if (!pagesResponse.ok) {
-      throw new Error('Failed to fetch Facebook pages')
-    }
+    // Try to get user's pages and their Instagram accounts (requires page scopes)
+    let accountToken = tokenData.access_token
+    let accountId = profile.id
+    let accountName = profile.name || 'Instagram Account'
 
-    const pagesData = await pagesResponse.json()
-    const pages = pagesData.data || []
+    try {
+      const pagesResponse = await fetch(
+        `${GRAPH_API_URL}/me/accounts?fields=instagram_business_account,name,access_token&access_token=${tokenData.access_token}`
+      )
 
-    // Find a page with an Instagram Business account
-    let igAccount = null
-    let pageToken = null
+      if (pagesResponse.ok) {
+        const pagesData = await pagesResponse.json()
+        const pages = pagesData.data || []
 
-    for (const page of pages) {
-      if (page.instagram_business_account) {
-        igAccount = page.instagram_business_account
-        pageToken = page.access_token
-        break
+        for (const page of pages) {
+          if (page.instagram_business_account) {
+            accountToken = page.access_token
+            accountId = page.instagram_business_account.id
+
+            // Get Instagram account details
+            const igResponse = await fetch(
+              `${GRAPH_API_URL}/${page.instagram_business_account.id}?fields=username,name&access_token=${page.access_token}`
+            )
+            if (igResponse.ok) {
+              const igData = await igResponse.json()
+              accountName = igData.username || igData.name || 'Instagram Account'
+            }
+            break
+          }
+        }
       }
-    }
-
-    if (!igAccount) {
-      throw new Error('No Instagram Business account found. Please connect an Instagram Business/Creator account to a Facebook Page.')
-    }
-
-    // Get Instagram account details
-    const igResponse = await fetch(
-      `${GRAPH_API_URL}/${igAccount.id}?fields=username,name&access_token=${pageToken}`
-    )
-
-    let accountName = 'Instagram Account'
-    if (igResponse.ok) {
-      const igData = await igResponse.json()
-      accountName = igData.username || igData.name || 'Instagram Account'
+    } catch {
+      // Pages not available - use user token (dev mode)
     }
 
     this.credentials = {
-      accessToken: pageToken!, // Use page token for Instagram API calls
-      accountId: igAccount.id,
+      accessToken: accountToken,
+      accountId,
       accountName,
     }
 

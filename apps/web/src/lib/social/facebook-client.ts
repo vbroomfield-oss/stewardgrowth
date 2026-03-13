@@ -64,30 +64,39 @@ export class FacebookClient implements SocialClient {
 
     const tokenData = await tokenResponse.json()
 
-    // Get user's pages
-    const pagesResponse = await fetch(
-      `${GRAPH_API_URL}/me/accounts?access_token=${tokenData.access_token}`
+    // Get user profile
+    const profileResponse = await fetch(
+      `${GRAPH_API_URL}/me?fields=id,name&access_token=${tokenData.access_token}`
     )
+    const profile = profileResponse.ok ? await profileResponse.json() : { id: 'unknown', name: 'Facebook User' }
 
-    if (!pagesResponse.ok) {
-      throw new Error('Failed to fetch Facebook pages')
+    // Try to get user's pages (requires pages_show_list scope - may not be available in dev mode)
+    let accountToken = tokenData.access_token
+    let accountId = profile.id
+    let accountName = profile.name
+
+    try {
+      const pagesResponse = await fetch(
+        `${GRAPH_API_URL}/me/accounts?access_token=${tokenData.access_token}`
+      )
+      if (pagesResponse.ok) {
+        const pagesData = await pagesResponse.json()
+        const pages = pagesData.data || []
+        if (pages.length > 0) {
+          // Use page token for posting if available
+          accountToken = pages[0].access_token
+          accountId = pages[0].id
+          accountName = pages[0].name
+        }
+      }
+    } catch {
+      // Pages not available - use user token (dev mode)
     }
-
-    const pagesData = await pagesResponse.json()
-    const pages = pagesData.data || []
-
-    if (pages.length === 0) {
-      throw new Error('No Facebook Pages found. Please create a Page first.')
-    }
-
-    // Use the first page (user can select later)
-    const page = pages[0]
 
     this.credentials = {
-      accessToken: page.access_token, // Use page access token for posting
-      accountId: page.id,
-      accountName: page.name,
-      // Page tokens don't expire if using long-lived user token
+      accessToken: accountToken,
+      accountId,
+      accountName,
     }
 
     return this.credentials
