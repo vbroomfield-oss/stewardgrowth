@@ -37,6 +37,8 @@ export interface VideoContentOptions {
   gender?: 'male' | 'female'
   voiceId?: string
   imagePrompts?: string[]
+  existingImageUrls?: string[]   // Pre-generated images to reuse (skips DALL-E)
+  skipVoiceover?: boolean        // Skip ElevenLabs voiceover for faster processing
   musicStyle?: 'energetic' | 'modern' | 'luxury' | 'hype' | 'minimal'
   template?: VideoTemplate
   ctaText?: string
@@ -273,32 +275,43 @@ export async function createSocialVideo(options: VideoContentOptions): Promise<{
     logoUrl: brandLogoUrl,
   }
 
-  // 1. Generate ecommerce-style images
-  console.log('[Video] Generating product/lifestyle images...')
-  const images = options.imagePrompts
-    ? await generateCustomImages(options.imagePrompts)
-    : await generateEcommerceImages(script, brandName, template, productName, 4)
+  // 1. Use existing images if provided, otherwise generate new ones
+  let images: string[]
+  if (options.existingImageUrls && options.existingImageUrls.length > 0) {
+    // Use images already generated during content creation (much faster)
+    images = options.existingImageUrls
+    console.log(`[Video] Using ${images.length} existing images`)
+  } else if (options.imagePrompts) {
+    images = await generateCustomImages(options.imagePrompts)
+    console.log(`[Video] Generated ${images.length} custom images`)
+  } else {
+    // Generate fresh images (slow — 4 DALL-E calls)
+    console.log('[Video] Generating product/lifestyle images...')
+    images = await generateEcommerceImages(script, brandName, template, productName, 3)
+    console.log(`[Video] Generated ${images.length} images`)
+  }
 
   if (images.length === 0) {
     throw new Error('Failed to generate any images for video')
   }
-  console.log(`[Video] Generated ${images.length} images`)
 
-  // 2. Generate ad copy (headlines + subtexts)
+  // 2. Generate ad copy (headlines + subtexts) — fast, single GPT call
   console.log('[Video] Generating ad copy...')
   const { headlines, subtexts } = await generateAdCopy(
     script, brandName, template, images.length, productName, price,
   )
 
-  // 3. Generate voiceover
-  console.log('[Video] Generating voiceover...')
-  const selectedVoiceId = voiceId || RECOMMENDED_VOICES[brandVoice]?.[gender]
-  const voiceoverUrl = await generateVoiceoverUrl(script, selectedVoiceId)
+  // 3. Generate voiceover (optional — skip if ElevenLabs not configured)
+  let voiceoverUrl: string | undefined
+  if (options.skipVoiceover !== true) {
+    console.log('[Video] Generating voiceover...')
+    const selectedVoiceId = voiceId || RECOMMENDED_VOICES[brandVoice]?.[gender]
+    voiceoverUrl = await generateVoiceoverUrl(script, selectedVoiceId)
+  }
 
   // 4. Build price array (only for product-showcase and promo-ad)
   const prices: string[] = []
   if (price && (template === 'product-showcase' || template === 'promo-ad')) {
-    // Show price on 2nd or 3rd slide
     prices[Math.min(2, images.length - 1)] = price
   }
 

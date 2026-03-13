@@ -68,7 +68,7 @@ export async function GET(request: NextRequest) {
       if (!videoPlatform) return false
       const platformData = platformVersions[videoPlatform]
       return platformData?.videoScript && !platformData?.renderId
-    }).slice(0, 3) // Process max 3 at a time to stay within timeout
+    }).slice(0, 1) // Process 1 at a time to stay within 300s timeout
 
     console.log(`[Video] ${toGenerate.length} posts need video generation`)
 
@@ -80,12 +80,23 @@ export async function GET(request: NextRequest) {
       const platformData = platformVersions[videoPlatform]
 
       try {
-        console.log(`[Video] Starting generation for ${content.id}...`)
+        console.log(`[Video] Starting generation for ${content.id} (${videoPlatform})...`)
 
         // Extract brand styling for professional ad look
         const brandSettings = (content.brand?.settings as Record<string, any>) || {}
         const brandColor = (brandSettings.color as string) || '#1a1a2e'
         const brandLogoUrl = brandSettings.logoUrl || content.brand?.logo || undefined
+
+        // Collect existing images from content post to avoid regenerating with DALL-E
+        const existingImages: string[] = []
+        if (platformData.imageUrl) existingImages.push(platformData.imageUrl)
+        // Also check other platform versions for images
+        for (const [, pData] of Object.entries(platformVersions)) {
+          const pd = pData as Record<string, any>
+          if (pd?.imageUrl && !existingImages.includes(pd.imageUrl)) {
+            existingImages.push(pd.imageUrl)
+          }
+        }
 
         const { renderId } = await createSocialVideo({
           script: platformData.videoScript,
@@ -95,6 +106,8 @@ export async function GET(request: NextRequest) {
           brandLogoUrl,
           template: platformData.videoTemplate || 'product-showcase',
           ctaText: platformData.ctaText || 'Learn More',
+          // Use existing images if available to skip slow DALL-E generation
+          existingImageUrls: existingImages.length > 0 ? existingImages : undefined,
         })
 
         await db.contentPost.update({
