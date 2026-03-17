@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { Suspense, useState } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
@@ -12,7 +12,7 @@ import { createClient } from '@/lib/supabase/client'
 import { toast } from '@/components/ui/use-toast'
 import { Loader2, Mail, Check } from 'lucide-react'
 
-export default function SignupPage() {
+function SignupForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const inviteOrgId = searchParams.get('invite')
@@ -240,5 +240,19 @@ export default function SignupPage() {
         </p>
       </CardFooter>
     </Card>
+  )
+}
+
+export default function SignupPage() {
+  return (
+    <Suspense fallback={
+      <Card className="border-0 shadow-none lg:border lg:shadow-sm">
+        <CardContent className="flex items-center justify-center py-16">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </CardContent>
+      </Card>
+    }>
+      <SignupForm />
+    </Suspense>
   )
 }

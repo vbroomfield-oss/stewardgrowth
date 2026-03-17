@@ -123,6 +123,18 @@ export default function SettingsPage() {
   const [inviteEmail, setInviteEmail] = useState('')
   const [inviting, setInviting] = useState(false)
 
+  // Service Health state
+  const [serviceHealth, setServiceHealth] = useState<Array<{
+    name: string
+    configured: boolean
+    status: 'ok' | 'warning' | 'critical' | 'unconfigured' | 'checking'
+    remaining?: number
+    limit?: number
+    unit?: string
+    error?: string
+  }>>([])
+  const [healthLoading, setHealthLoading] = useState(false)
+
   // 7B: Create API Key state
   const [showApiKeyForm, setShowApiKeyForm] = useState(false)
   const [apiKeyName, setApiKeyName] = useState('')
@@ -337,8 +349,9 @@ export default function SettingsPage() {
       </div>
 
       <Tabs defaultValue="integrations">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="integrations">Integrations</TabsTrigger>
+          <TabsTrigger value="health">Service Health</TabsTrigger>
           <TabsTrigger value="organization">Organization</TabsTrigger>
           <TabsTrigger value="team">Team</TabsTrigger>
           <TabsTrigger value="billing">Billing</TabsTrigger>
@@ -602,6 +615,126 @@ export default function SettingsPage() {
                   <span className="text-xs text-muted-foreground">Coming Soon</span>
                 </div>
               ))}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Service Health Tab */}
+        <TabsContent value="health" className="space-y-6 mt-6">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Service Health & Quotas</CardTitle>
+                  <CardDescription>
+                    Monitor the status and remaining quota of external APIs used for content and video generation
+                  </CardDescription>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={async () => {
+                    setHealthLoading(true)
+                    try {
+                      const res = await fetch('/api/settings/service-health', { credentials: 'include' })
+                      if (res.ok) {
+                        const data = await res.json()
+                        setServiceHealth(data.services || [])
+                      }
+                    } catch (err) {
+                      console.error('Failed to check health:', err)
+                    } finally {
+                      setHealthLoading(false)
+                    }
+                  }}
+                  disabled={healthLoading}
+                >
+                  {healthLoading ? (
+                    <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Checking...</>
+                  ) : (
+                    'Check Now'
+                  )}
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {serviceHealth.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <AlertTriangle className="h-8 w-8 mx-auto mb-3 opacity-50" />
+                  <p>Click &quot;Check Now&quot; to check the status of your external services</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {serviceHealth.map((service) => (
+                    <div
+                      key={service.name}
+                      className={cn(
+                        "p-4 rounded-lg border",
+                        service.status === 'critical' && "bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-900",
+                        service.status === 'warning' && "bg-yellow-50 dark:bg-yellow-950/20 border-yellow-200 dark:border-yellow-900",
+                        service.status === 'ok' && "bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-900",
+                        service.status === 'unconfigured' && "bg-muted/50 border-muted",
+                      )}
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <div className={cn(
+                            "h-2.5 w-2.5 rounded-full",
+                            service.status === 'critical' && "bg-red-500",
+                            service.status === 'warning' && "bg-yellow-500",
+                            service.status === 'ok' && "bg-green-500",
+                            service.status === 'unconfigured' && "bg-gray-400",
+                          )} />
+                          <span className="font-medium">{service.name}</span>
+                        </div>
+                        <span className={cn(
+                          "text-xs font-medium px-2 py-0.5 rounded",
+                          service.status === 'critical' && "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300",
+                          service.status === 'warning' && "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300",
+                          service.status === 'ok' && "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300",
+                          service.status === 'unconfigured' && "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400",
+                        )}>
+                          {service.status === 'ok' ? 'Healthy' : service.status === 'unconfigured' ? 'Not Configured' : service.status.toUpperCase()}
+                        </span>
+                      </div>
+
+                      {service.remaining !== undefined && service.limit !== undefined && service.limit > 0 && (
+                        <>
+                          <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden mt-3">
+                            <div
+                              className={cn(
+                                "h-full rounded-full transition-all",
+                                service.status === 'critical' && "bg-red-500",
+                                service.status === 'warning' && "bg-yellow-500",
+                                service.status === 'ok' && "bg-green-500",
+                              )}
+                              style={{ width: `${Math.max(Math.round((service.remaining / service.limit) * 100), 1)}%` }}
+                            />
+                          </div>
+                          <div className="flex justify-between mt-1 text-xs text-muted-foreground">
+                            <span>{service.remaining.toLocaleString()} {service.unit} remaining</span>
+                            <span>{service.limit.toLocaleString()} total</span>
+                          </div>
+                        </>
+                      )}
+
+                      {service.unit && !service.limit && service.status !== 'unconfigured' && (
+                        <p className="text-xs text-muted-foreground mt-1">{service.unit}</p>
+                      )}
+
+                      {service.error && (
+                        <p className="text-xs text-red-600 dark:text-red-400 mt-2">{service.error}</p>
+                      )}
+
+                      {service.status === 'unconfigured' && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Add the API key in your Vercel environment variables to enable this service
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

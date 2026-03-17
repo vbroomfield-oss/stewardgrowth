@@ -226,8 +226,14 @@ async function generateVoiceoverUrl(
     // For Shotstack, we need a public URL
     // In production, upload to S3/Cloudinary/etc
     return `data:audio/mpeg;base64,${audioBase64}`
-  } catch (error) {
-    console.error('[Video] Failed to generate voiceover:', error)
+  } catch (error: any) {
+    const errorMsg = String(error?.message || error)
+    // Gracefully handle quota exceeded, auth errors, etc. — video continues without voiceover
+    if (errorMsg.includes('quota_exceeded') || errorMsg.includes('401') || errorMsg.includes('429')) {
+      console.warn(`[Video] ElevenLabs quota/auth issue, proceeding without voiceover: ${errorMsg.substring(0, 200)}`)
+    } else {
+      console.error('[Video] Failed to generate voiceover:', error)
+    }
     return undefined
   }
 }
@@ -285,9 +291,9 @@ export async function createSocialVideo(options: VideoContentOptions): Promise<{
     images = await generateCustomImages(options.imagePrompts)
     console.log(`[Video] Generated ${images.length} custom images`)
   } else {
-    // Generate fresh images (slow — 4 DALL-E calls)
+    // Generate fresh images (slow — uses DALL-E). Keep to 2 to stay within cron timeout
     console.log('[Video] Generating product/lifestyle images...')
-    images = await generateEcommerceImages(script, brandName, template, productName, 3)
+    images = await generateEcommerceImages(script, brandName, template, productName, 2)
     console.log(`[Video] Generated ${images.length} images`)
   }
 
