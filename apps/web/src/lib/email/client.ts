@@ -96,7 +96,7 @@ export async function sendApprovalNotification(options: {
       </table>
 
       <div style="text-align: center; margin-top: 24px;">
-        <a href="https://stewardgrowth.vercel.app/approvals"
+        <a href="https://stewardgrowth.tech/approvals"
            style="display: inline-block; background-color: #000; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: 500;">
           Review Content
         </a>
@@ -191,7 +191,7 @@ export async function sendWeeklyDigest(options: {
       ` : ''}
 
       <div style="text-align: center; margin-top: 24px;">
-        <a href="https://stewardgrowth.vercel.app"
+        <a href="https://stewardgrowth.tech"
            style="display: inline-block; background-color: #000; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: 500;">
           View Dashboard
         </a>

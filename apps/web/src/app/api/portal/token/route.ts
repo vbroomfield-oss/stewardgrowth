@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://stewardgrowth.vercel.app'
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://stewardgrowth.tech'
     const viewUrl = `${appUrl}/view/${portalToken.token}`
 
     return NextResponse.json({
@@ -102,7 +102,7 @@ export async function GET(request: NextRequest) {
       },
     })
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://stewardgrowth.vercel.app'
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://stewardgrowth.tech'
 
     return NextResponse.json({
       success: true,

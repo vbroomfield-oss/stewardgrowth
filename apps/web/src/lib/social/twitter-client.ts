@@ -26,7 +26,7 @@ export class TwitterClient implements SocialClient {
    */
   getAuthUrl(state: string, codeChallenge?: string): string {
     const clientId = process.env.TWITTER_CLIENT_ID
-    const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL || 'https://stewardgrowth.vercel.app'}/api/oauth/twitter/callback`
+    const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL || 'https://stewardgrowth.tech'}/api/oauth/twitter/callback`
 
     const params = new URLSearchParams({
       response_type: 'code',
@@ -47,7 +47,7 @@ export class TwitterClient implements SocialClient {
   async handleCallback(code: string, codeVerifier?: string): Promise<SocialCredentials> {
     const clientId = process.env.TWITTER_CLIENT_ID
     const clientSecret = process.env.TWITTER_CLIENT_SECRET
-    const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL || 'https://stewardgrowth.vercel.app'}/api/oauth/twitter/callback`
+    const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL || 'https://stewardgrowth.tech'}/api/oauth/twitter/callback`
 
     const params = new URLSearchParams({
       grant_type: 'authorization_code',

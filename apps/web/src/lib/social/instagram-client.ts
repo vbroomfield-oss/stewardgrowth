@@ -20,7 +20,7 @@ export class InstagramClient implements SocialClient {
 
   getAuthUrl(state: string): string {
     const appId = process.env.META_APP_ID
-    const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL || 'https://stewardgrowth.vercel.app'}/api/oauth/instagram/callback`
+    const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL || 'https://stewardgrowth.tech'}/api/oauth/instagram/callback`
 
     const params = new URLSearchParams({
       client_id: appId!,
@@ -84,7 +84,7 @@ export class InstagramClient implements SocialClient {
   async handleCallback(code: string): Promise<SocialCredentials & { igAccounts?: Array<{ pageId: string; pageName: string; pageToken: string; igAccountId: string; igUsername: string }> }> {
     const appId = process.env.META_APP_ID
     const appSecret = process.env.META_APP_SECRET
-    const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL || 'https://stewardgrowth.vercel.app'}/api/oauth/instagram/callback`
+    const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL || 'https://stewardgrowth.tech'}/api/oauth/instagram/callback`
 
     const tokenParams = new URLSearchParams({
       client_id: appId!,

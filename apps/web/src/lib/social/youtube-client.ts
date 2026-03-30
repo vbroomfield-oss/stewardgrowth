@@ -29,7 +29,7 @@ export class YouTubeClient implements SocialClient {
    */
   getAuthUrl(state: string): string {
     const clientId = process.env.GOOGLE_CLIENT_ID
-    const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL || 'https://stewardgrowth.vercel.app'}/api/oauth/youtube/callback`
+    const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL || 'https://stewardgrowth.tech'}/api/oauth/youtube/callback`
 
     const params = new URLSearchParams({
       client_id: clientId!,
@@ -50,7 +50,7 @@ export class YouTubeClient implements SocialClient {
   async handleCallback(code: string): Promise<SocialCredentials> {
     const clientId = process.env.GOOGLE_CLIENT_ID
     const clientSecret = process.env.GOOGLE_CLIENT_SECRET
-    const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL || 'https://stewardgrowth.vercel.app'}/api/oauth/youtube/callback`
+    const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL || 'https://stewardgrowth.tech'}/api/oauth/youtube/callback`
 
     const response = await fetch(GOOGLE_TOKEN_URL, {
       method: 'POST',

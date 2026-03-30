@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
     }
 
     // User doesn't exist — generate invite link
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://stewardgrowth.vercel.app'
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://stewardgrowth.tech'
     const inviteUrl = `${appUrl}/signup?invite=${userOrg.organizationId}&role=${role}`
 
     return NextResponse.json({

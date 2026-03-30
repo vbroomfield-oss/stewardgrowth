@@ -20,7 +20,7 @@ export class FacebookClient implements SocialClient {
 
   getAuthUrl(state: string): string {
     const appId = process.env.META_APP_ID
-    const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL || 'https://stewardgrowth.vercel.app'}/api/oauth/facebook/callback`
+    const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL || 'https://stewardgrowth.tech'}/api/oauth/facebook/callback`
 
     const params = new URLSearchParams({
       client_id: appId!,
@@ -92,7 +92,7 @@ export class FacebookClient implements SocialClient {
   async handleCallback(code: string): Promise<SocialCredentials & { pages?: FacebookPage[] }> {
     const appId = process.env.META_APP_ID
     const appSecret = process.env.META_APP_SECRET
-    const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL || 'https://stewardgrowth.vercel.app'}/api/oauth/facebook/callback`
+    const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL || 'https://stewardgrowth.tech'}/api/oauth/facebook/callback`
 
     const tokenParams = new URLSearchParams({
       client_id: appId!,

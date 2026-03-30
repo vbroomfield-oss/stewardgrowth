@@ -26,7 +26,7 @@ export class PinterestClient implements SocialClient {
    */
   getAuthUrl(state: string): string {
     const appId = process.env.PINTEREST_APP_ID
-    const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL || 'https://stewardgrowth.vercel.app'}/api/oauth/pinterest/callback`
+    const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL || 'https://stewardgrowth.tech'}/api/oauth/pinterest/callback`
 
     const params = new URLSearchParams({
       client_id: appId!,
@@ -45,7 +45,7 @@ export class PinterestClient implements SocialClient {
   async handleCallback(code: string): Promise<SocialCredentials> {
     const appId = process.env.PINTEREST_APP_ID
     const appSecret = process.env.PINTEREST_APP_SECRET
-    const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL || 'https://stewardgrowth.vercel.app'}/api/oauth/pinterest/callback`
+    const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL || 'https://stewardgrowth.tech'}/api/oauth/pinterest/callback`
 
     const basicAuth = Buffer.from(`${appId}:${appSecret}`).toString('base64')
 

@@ -21,7 +21,7 @@ export class LinkedInClient implements SocialClient {
 
   getAuthUrl(state: string): string {
     const clientId = process.env.LINKEDIN_CLIENT_ID
-    const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL || 'https://stewardgrowth.vercel.app'}/api/oauth/linkedin/callback`
+    const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL || 'https://stewardgrowth.tech'}/api/oauth/linkedin/callback`
 
     const params = new URLSearchParams({
       response_type: 'code',
@@ -104,7 +104,7 @@ export class LinkedInClient implements SocialClient {
   async handleCallback(code: string): Promise<SocialCredentials & { organizations?: LinkedInOrganization[] }> {
     const clientId = process.env.LINKEDIN_CLIENT_ID
     const clientSecret = process.env.LINKEDIN_CLIENT_SECRET
-    const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL || 'https://stewardgrowth.vercel.app'}/api/oauth/linkedin/callback`
+    const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL || 'https://stewardgrowth.tech'}/api/oauth/linkedin/callback`
 
     const params = new URLSearchParams({
       grant_type: 'authorization_code',

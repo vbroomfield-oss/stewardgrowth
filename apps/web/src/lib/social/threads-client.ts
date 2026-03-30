@@ -22,7 +22,7 @@ export class ThreadsClient implements SocialClient {
 
   getAuthUrl(state: string): string {
     const appId = process.env.META_APP_ID
-    const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL || 'https://stewardgrowth.vercel.app'}/api/oauth/threads/callback`
+    const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL || 'https://stewardgrowth.tech'}/api/oauth/threads/callback`
     const scopes = getThreadsScopes()
 
     if (useThreadsOAuth()) {
@@ -52,7 +52,7 @@ export class ThreadsClient implements SocialClient {
   async handleCallback(code: string): Promise<SocialCredentials> {
     const appId = process.env.META_APP_ID
     const appSecret = process.env.META_APP_SECRET
-    const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL || 'https://stewardgrowth.vercel.app'}/api/oauth/threads/callback`
+    const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL || 'https://stewardgrowth.tech'}/api/oauth/threads/callback`
 
     // Use the appropriate token endpoint based on scope mode
     const tokenUrl = useThreadsOAuth() ? THREADS_TOKEN_URL : META_TOKEN_URL

@@ -26,7 +26,7 @@ export class TikTokClient implements SocialClient {
    */
   getAuthUrl(state: string): string {
     const clientKey = process.env.TIKTOK_CLIENT_KEY
-    const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL || 'https://stewardgrowth.vercel.app'}/api/oauth/tiktok/callback`
+    const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL || 'https://stewardgrowth.tech'}/api/oauth/tiktok/callback`
 
     const params = new URLSearchParams({
       client_key: clientKey!,
@@ -45,7 +45,7 @@ export class TikTokClient implements SocialClient {
   async handleCallback(code: string): Promise<SocialCredentials> {
     const clientKey = process.env.TIKTOK_CLIENT_KEY
     const clientSecret = process.env.TIKTOK_CLIENT_SECRET
-    const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL || 'https://stewardgrowth.vercel.app'}/api/oauth/tiktok/callback`
+    const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL || 'https://stewardgrowth.tech'}/api/oauth/tiktok/callback`
 
     const response = await fetch(TIKTOK_TOKEN_URL, {
       method: 'POST',
