@@ -10,19 +10,86 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Separator } from '@/components/ui/separator'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from '@/components/ui/use-toast'
-import { Loader2, Mail, Check } from 'lucide-react'
+import { Loader2, Mail, ShieldCheck } from 'lucide-react'
 
 function SignupForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const inviteOrgId = searchParams.get('invite')
-  const inviteRole = searchParams.get('role') || 'VIEWER'
+  const inviteRole = searchParams.get('role') || 'OWNER'
+  const inviteType = searchParams.get('type') || 'join' // 'join' = join existing org, 'new' = create own org
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [isGoogleLoading, setIsGoogleLoading] = useState(false)
+  const [inviteValid, setInviteValid] = useState<boolean | null>(null)
+  const [inviteOrgName, setInviteOrgName] = useState<string>('')
+
+  // Validate invite token on mount
+  useState(() => {
+    if (!inviteOrgId) {
+      setInviteValid(false)
+      return
+    }
+    fetch(`/api/invite/validate?org=${inviteOrgId}&type=${inviteType}`)
+      .then(res => res.json())
+      .then(data => {
+        setInviteValid(data.valid === true)
+        if (data.organizationName) setInviteOrgName(data.organizationName)
+      })
+      .catch(() => setInviteValid(false))
+  })
+
+  // No invite token — show blocked message
+  if (!inviteOrgId || inviteValid === false) {
+    return (
+      <Card className="border-0 shadow-none lg:border lg:shadow-sm">
+        <CardHeader className="space-y-1 text-center">
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-muted">
+            <ShieldCheck className="h-6 w-6 text-muted-foreground" />
+          </div>
+          <CardTitle className="text-2xl font-bold">
+            Invite Required
+          </CardTitle>
+          <CardDescription className="text-base">
+            StewardGrowth is currently invite-only. You need a valid invitation link to create an account.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4 text-center">
+          <p className="text-sm text-muted-foreground">
+            If you&apos;ve received an invite link, make sure you&apos;re using the full URL provided to you.
+          </p>
+          <p className="text-sm text-muted-foreground">
+            Need access?{' '}
+            <a href="mailto:legal@bentgroup.co" className="text-primary hover:underline font-medium">
+              Contact B.Ent Group
+            </a>
+          </p>
+        </CardContent>
+        <CardFooter>
+          <p className="text-center text-sm text-muted-foreground w-full">
+            Already have an account?{' '}
+            <Link href="/login" className="text-primary hover:underline font-medium">
+              Sign in
+            </Link>
+          </p>
+        </CardFooter>
+      </Card>
+    )
+  }
+
+  // Still validating invite
+  if (inviteValid === null) {
+    return (
+      <Card className="border-0 shadow-none lg:border lg:shadow-sm">
+        <CardContent className="flex items-center justify-center py-16">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </CardContent>
+      </Card>
+    )
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -37,8 +104,10 @@ function SignupForm() {
           data: {
             first_name: firstName,
             last_name: lastName,
-            invite_org_id: inviteOrgId || undefined,
-            invite_role: inviteOrgId ? inviteRole : undefined,
+            // type=new means beta tester gets their own org (don't pass invite_org_id)
+            // type=join means they join the existing org
+            invite_org_id: inviteType === 'join' ? inviteOrgId : undefined,
+            invite_role: inviteType === 'join' && inviteOrgId ? inviteRole : undefined,
           },
           emailRedirectTo: `${window.location.origin}/auth/callback`,
         },
@@ -77,7 +146,7 @@ function SignupForm() {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
+          redirectTo: `${window.location.origin}/auth/callback?invite=${inviteOrgId}&role=${inviteRole}`,
         },
       })
 
@@ -103,13 +172,10 @@ function SignupForm() {
     <Card className="border-0 shadow-none lg:border lg:shadow-sm">
       <CardHeader className="space-y-1">
         <CardTitle className="text-2xl font-bold">
-          {inviteOrgId ? 'Join your brand portal' : 'Create an account'}
+          {inviteOrgName ? `Join ${inviteOrgName}` : 'Create your account'}
         </CardTitle>
         <CardDescription>
-          {inviteOrgId
-            ? 'You\'ve been invited to monitor your brand performance on StewardGrowth.'
-            : 'Get started with StewardGrowth for free'
-          }
+          You&apos;ve been invited to join StewardGrowth. Create your account to get started.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">

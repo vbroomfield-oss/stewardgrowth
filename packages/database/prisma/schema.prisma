@@ -41,11 +41,12 @@ model Organization {
   settings Json? @default("{}")
 
   // Relations
-  members    OrganizationMember[]
-  brands     SaaSBrand[]
-  apiKeys    ApiKey[]
-  webhooks   Webhook[]
-  auditLogs  AuditLog[]
+  members        OrganizationMember[]
+  brands         SaaSBrand[]
+  apiKeys        ApiKey[]
+  webhooks       Webhook[]
+  auditLogs      AuditLog[]
+  supportTickets SupportTicket[]
 
   @@index([slug])
   @@index([stripeCustomerId])
@@ -84,6 +85,7 @@ model User {
   createdApprovals   ApprovalRequest[]    @relation("ApprovalRequester")
   reviewedApprovals  ApprovalRequest[]    @relation("ApprovalReviewer")
   auditLogs          AuditLog[]
+  supportTickets     SupportTicket[]
 
   @@index([supabaseId])
   @@index([email])
@@ -1325,6 +1327,75 @@ model AuditLog {
   @@index([action])
   @@index([resource])
   @@index([createdAt])
+}
+
+// ===========================================
+// SUPPORT TICKETS
+// ===========================================
+
+model SupportTicket {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Ticket details
+  title       String
+  description String  @db.Text
+  category    TicketCategory
+  severity    TicketSeverity @default(MEDIUM)
+
+  // What was tested
+  featureArea String?    // e.g. "Content Generation", "Social Connections", "Video Pipeline"
+  stepsToReproduce String? @db.Text
+
+  // Status
+  status      TicketStatus @default(OPEN)
+  resolvedAt  DateTime?
+  resolvedById String?
+
+  // Admin response
+  response    String? @db.Text
+  respondedAt DateTime?
+
+  // Attachments (screenshots, logs)
+  attachments Json? @default("[]")
+
+  @@index([organizationId])
+  @@index([userId])
+  @@index([status])
+  @@index([category])
+  @@index([createdAt])
+}
+
+enum TicketCategory {
+  BUG
+  FEATURE_REQUEST
+  USABILITY
+  PERFORMANCE
+  SECURITY
+  QUESTION
+  DAILY_REPORT
+}
+
+enum TicketSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+  WONT_FIX
 }
 
 // ===========================================

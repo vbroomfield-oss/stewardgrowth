@@ -28,6 +28,7 @@ import {
   BookOpen,
   Plus,
   Loader2,
+  TicketCheck,
 } from 'lucide-react'
 import {
   DropdownMenu,
@@ -74,6 +75,7 @@ const navigation = [
     items: [
       { name: 'Approvals', href: '/approvals', icon: CheckSquare },
       { name: 'Reports', href: '/reports', icon: BarChart3 },
+      { name: 'Support Tickets', href: '/support', icon: TicketCheck },
     ],
   },
 ]
