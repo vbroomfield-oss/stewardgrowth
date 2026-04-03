@@ -197,8 +197,9 @@ export async function PUT(
     })
   } catch (error) {
     console.error('Error updating approval:', error)
+    const message = error instanceof Error ? error.message : String(error)
     return NextResponse.json(
-      { success: false, error: 'Failed to update approval' },
+      { success: false, error: `Failed to update approval: ${message}` },
       { status: 500 }
     )
   }
