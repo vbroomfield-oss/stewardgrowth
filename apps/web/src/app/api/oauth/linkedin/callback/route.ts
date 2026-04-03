@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
 import { getUserWithOrganization } from '@/lib/auth/get-user-org'
 import { createLinkedInClient } from '@/lib/social/linkedin-client'
+import { getOAuthRedirectPath } from '@/lib/oauth/redirect-utils'
 import { db } from '@/lib/db'
 
 export async function GET(request: NextRequest) {
@@ -20,7 +21,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(new URL('/settings?error=linkedin_missing_params', request.url))
     }
 
-    let stateData: { brandId: string; userId: string; timestamp: number }
+    let stateData: { brandId: string; userId: string; timestamp: number; source?: string }
     try {
       stateData = JSON.parse(Buffer.from(state, 'base64').toString('utf-8'))
     } catch {
@@ -95,12 +96,16 @@ export async function GET(request: NextRequest) {
     const organizations = (result as any).organizations
     if (organizations && organizations.length > 1) {
       return NextResponse.redirect(
-        new URL(`/brands/${redirectSlug}/settings?tab=social&selectOrg=linkedin`, request.url)
+        new URL(getOAuthRedirectPath({
+          source: stateData.source, brandSlug: redirectSlug, platform: 'linkedin', result: 'selectOrg',
+        }), request.url)
       )
     }
 
     return NextResponse.redirect(
-      new URL(`/brands/${redirectSlug}/settings?tab=social&success=linkedin_connected`, request.url)
+      new URL(getOAuthRedirectPath({
+        source: stateData.source, brandSlug: redirectSlug, platform: 'linkedin', result: 'success',
+      }), request.url)
     )
   } catch (error) {
     console.error('LinkedIn callback error:', error)

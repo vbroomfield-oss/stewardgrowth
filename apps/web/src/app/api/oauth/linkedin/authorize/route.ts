@@ -42,12 +42,15 @@ export async function GET(request: NextRequest) {
       )
     }
 
+    const source = searchParams.get('source') || 'dashboard'
+
     // Create state parameter with brand info (for callback)
     const state = Buffer.from(
       JSON.stringify({
         brandId,
         userId: userWithOrg.id,
         timestamp: Date.now(),
+        source,
       })
     ).toString('base64')
 

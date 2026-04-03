@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
 import { getUserWithOrganization } from '@/lib/auth/get-user-org'
 import { createYouTubeClient } from '@/lib/social/youtube-client'
+import { getOAuthRedirectPath } from '@/lib/oauth/redirect-utils'
 import { db } from '@/lib/db'
 
 export async function GET(request: NextRequest) {
@@ -20,7 +21,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(new URL('/settings?error=youtube_missing_params', request.url))
     }
 
-    let stateData: { brandId: string; userId: string; timestamp: number }
+    let stateData: { brandId: string; userId: string; timestamp: number; source?: string }
     try {
       stateData = JSON.parse(Buffer.from(state, 'base64').toString('utf-8'))
     } catch {
@@ -78,7 +79,9 @@ export async function GET(request: NextRequest) {
     // Look up brand slug for redirect
     const brandForRedirect = await db.saaSBrand.findUnique({ where: { id: stateData.brandId }, select: { slug: true } })
     const redirectSlug = brandForRedirect?.slug || stateData.brandId
-    return NextResponse.redirect(new URL(`/brands/${redirectSlug}/settings?tab=social&success=youtube_connected`, request.url))
+    return NextResponse.redirect(new URL(getOAuthRedirectPath({
+      source: stateData.source, brandSlug: redirectSlug, platform: 'youtube', result: 'success',
+    }), request.url))
   } catch (error) {
     console.error('YouTube callback error:', error)
     return NextResponse.redirect(new URL('/settings?error=youtube_callback_failed', request.url))

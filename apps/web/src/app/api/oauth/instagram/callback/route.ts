@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
 import { getUserWithOrganization } from '@/lib/auth/get-user-org'
 import { createInstagramClient } from '@/lib/social/instagram-client'
+import { getOAuthRedirectPath } from '@/lib/oauth/redirect-utils'
 import { db } from '@/lib/db'
 
 export async function GET(request: NextRequest) {
@@ -20,7 +21,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(new URL('/settings?error=instagram_missing_params', request.url))
     }
 
-    let stateData: { brandId: string; userId: string; timestamp: number }
+    let stateData: { brandId: string; userId: string; timestamp: number; source?: string }
     try {
       stateData = JSON.parse(Buffer.from(state, 'base64').toString('utf-8'))
     } catch {
@@ -89,12 +90,16 @@ export async function GET(request: NextRequest) {
     const igAccounts = (result as any).igAccounts
     if (igAccounts && igAccounts.length > 1) {
       return NextResponse.redirect(
-        new URL(`/brands/${redirectSlug}/settings?tab=social&selectPage=instagram`, request.url)
+        new URL(getOAuthRedirectPath({
+          source: stateData.source, brandSlug: redirectSlug, platform: 'instagram', result: 'selectPage',
+        }), request.url)
       )
     }
 
     return NextResponse.redirect(
-      new URL(`/brands/${redirectSlug}/settings?tab=social&success=instagram_connected`, request.url)
+      new URL(getOAuthRedirectPath({
+        source: stateData.source, brandSlug: redirectSlug, platform: 'instagram', result: 'success',
+      }), request.url)
     )
   } catch (error) {
     console.error('Instagram callback error:', error)

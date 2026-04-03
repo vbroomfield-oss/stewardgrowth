@@ -27,10 +27,13 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Brand not found' }, { status: 404 })
     }
 
+    const source = searchParams.get('source') || 'dashboard'
+
     const state = Buffer.from(JSON.stringify({
       brandId,
       userId: userWithOrg.id,
       timestamp: Date.now(),
+      source,
     })).toString('base64')
 
     const client = createPinterestClient()

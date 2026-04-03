@@ -1,17 +1,18 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useParams } from 'next/navigation'
+import { useState, useEffect, Suspense } from 'react'
+import { useParams, useSearchParams } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { PortalStatsCard } from '@/components/portal/portal-stats-card'
 import { ActivityTimeline } from '@/components/portal/activity-timeline'
+import { PortalSocialTab } from '@/components/portal/portal-social-tab'
 import {
   Send, Clock, FileText, Globe, BarChart3,
   Twitter, Linkedin, Facebook, Instagram, Video,
-  MessageCircle, Youtube, Music2,
+  MessageCircle, Youtube, Music2, Loader2,
 } from 'lucide-react'
 
 interface BrandDetail {
@@ -69,26 +70,29 @@ const statusColors: Record<string, string> = {
   DRAFT: 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400',
 }
 
-export default function PortalBrandPage() {
+function PortalBrandContent() {
   const params = useParams()
+  const searchParams = useSearchParams()
   const brandSlug = params.brandSlug as string
+  const initialTab = searchParams.get('tab') || 'overview'
   const [brand, setBrand] = useState<BrandDetail | null>(null)
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    async function load() {
-      try {
-        const res = await fetch(`/api/portal/brands/${brandSlug}`, { credentials: 'include' })
-        if (res.ok) {
-          const data = await res.json()
-          setBrand(data.brand)
-        }
-      } catch (error) {
-        console.error('Failed to load brand:', error)
-      } finally {
-        setLoading(false)
+  const load = async () => {
+    try {
+      const res = await fetch(`/api/portal/brands/${brandSlug}`, { credentials: 'include' })
+      if (res.ok) {
+        const data = await res.json()
+        setBrand(data.brand)
       }
+    } catch (error) {
+      console.error('Failed to load brand:', error)
+    } finally {
+      setLoading(false)
     }
+  }
+
+  useEffect(() => {
     if (brandSlug) load()
   }, [brandSlug])
 
@@ -153,10 +157,11 @@ export default function PortalBrandPage() {
       </div>
 
       {/* Tabs */}
-      <Tabs defaultValue="overview" className="space-y-4">
+      <Tabs defaultValue={initialTab} className="space-y-4">
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="content">Content</TabsTrigger>
+          <TabsTrigger value="social">Social Connections</TabsTrigger>
           <TabsTrigger value="analytics">Analytics</TabsTrigger>
         </TabsList>
 
@@ -246,12 +251,33 @@ export default function PortalBrandPage() {
           </Card>
         </TabsContent>
 
+        {/* Social Connections Tab */}
+        <TabsContent value="social">
+          <PortalSocialTab
+            brandId={brand.id}
+            brandName={brand.name}
+            onConnectionsChanged={() => load()}
+          />
+        </TabsContent>
+
         {/* Analytics Tab */}
         <TabsContent value="analytics">
           <AnalyticsSection brandSlug={brandSlug} />
         </TabsContent>
       </Tabs>
     </div>
+  )
+}
+
+export default function PortalBrandPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    }>
+      <PortalBrandContent />
+    </Suspense>
   )
 }
 

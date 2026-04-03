@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
 import { getUserWithOrganization } from '@/lib/auth/get-user-org'
 import { createFacebookClient } from '@/lib/social/facebook-client'
+import { getOAuthRedirectPath } from '@/lib/oauth/redirect-utils'
 import { db } from '@/lib/db'
 
 export async function GET(request: NextRequest) {
@@ -20,7 +21,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(new URL('/settings?error=facebook_missing_params', request.url))
     }
 
-    let stateData: { brandId: string; userId: string; timestamp: number }
+    let stateData: { brandId: string; userId: string; timestamp: number; source?: string }
     try {
       stateData = JSON.parse(Buffer.from(state, 'base64').toString('utf-8'))
     } catch {
@@ -91,12 +92,16 @@ export async function GET(request: NextRequest) {
     const pages = (result as any).pages
     if (pages && pages.length > 1) {
       return NextResponse.redirect(
-        new URL(`/brands/${redirectSlug}/settings?tab=social&selectPage=facebook`, request.url)
+        new URL(getOAuthRedirectPath({
+          source: stateData.source, brandSlug: redirectSlug, platform: 'facebook', result: 'selectPage',
+        }), request.url)
       )
     }
 
     return NextResponse.redirect(
-      new URL(`/brands/${redirectSlug}/settings?tab=social&success=facebook_connected`, request.url)
+      new URL(getOAuthRedirectPath({
+        source: stateData.source, brandSlug: redirectSlug, platform: 'facebook', result: 'success',
+      }), request.url)
     )
   } catch (error) {
     console.error('Facebook callback error:', error)
