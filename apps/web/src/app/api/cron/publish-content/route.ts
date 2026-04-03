@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
         status: 'APPROVED',
         scheduledFor: {
           lte: fifteenMinutesFromNow,
-          gte: new Date(now.getTime() - 60 * 60 * 1000), // Don't publish if more than 1 hour late
+          gte: new Date(now.getTime() - 24 * 60 * 60 * 1000), // Don't publish if more than 24 hours late
         },
       },
       include: {
